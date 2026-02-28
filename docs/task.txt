@@ -1,0 +1,49 @@
+Dựa trên kế hoạch chi tiết và lộ trình 3 tuần đã thống nhất cho nhóm của bạn (Lực, Hoàng, Huy), dưới đây là danh sách các task được sắp xếp theo **thứ tự thực hiện** để đảm bảo tính logic và luồng dữ liệu thông suốt:
+
+### 📅 Giai đoạn 1: Thiết lập nền tảng (Tuần 1)
+
+Đây là giai đoạn quan trọng nhất để thống nhất cấu trúc dữ liệu trước khi viết code logic.
+
+* 
+**Task 1 (Lực):** Thiết kế sơ đồ kiến trúc hệ thống tổng thể và Sequence Diagram cho luồng Saga.
+
+**Task 2 (Hoàng):** Khởi tạo SQL Schema (Tạo các bảng `Shipments`, `Ownership`, `Parties`, `Ports` với đầy đủ ràng buộc).
+
+**Task 3 (Huy):** Thiết kế MongoDB Schema cho collection `telemetry_logs` (Định dạng append-only và đánh Index).
+
+**Task 4 (Lực/Hoàng/Huy):** Thiết lập Repo Git và cấu trúc thư mục dự án (`src/`, `config/`, `database/`).
+
+---
+
+### ⚙️ Giai đoạn 2: Phát triển Logic nghiệp vụ (Tuần 2)
+
+Sau khi có database, các thành viên bắt đầu viết các hàm xử lý dữ liệu phức tạp.
+
+**Task 5 (Hoàng):** Viết Stored Procedure `sp_change_custody` xử lý Transaction nguyên tử cho việc bàn giao quyền sở hữu.
+
+**Task 6 (Huy):** Xây dựng các Aggregation Pipeline trong MongoDB để truy xuất lộ trình và tính toán thời gian di chuyển trung bình.
+
+**Task 7 (Hoàng):** Triển khai các SQL Trigger (`TRG_CHECK_VIOLATION` và `TRG_BLOCK_CUSTODY_WHEN_ALARM`).
+
+**Task 8 (Lực):** Xây dựng Saga Orchestrator để kết nối luồng: Nhận dữ liệu từ Mongo -> Kiểm tra vi phạm -> Gọi SQL Update.
+
+**Task 9 (Hoàng):** Viết câu lệnh Recursive CTE để truy vết chuỗi sở hữu (Chain of Custody) theo dòng thời gian.
+
+---
+
+### 🔗 Giai đoạn 3: Tích hợp, Kiểm thử & Hoàn thiện (Tuần 3)
+
+Kết nối các module và chuẩn bị nội dung bảo vệ đồ án.
+
+**Task 10 (Lực):** Triển khai Outbox Pattern để xử lý thông báo và đảm bảo tính nhất quán của hệ thống.
+
+**Task 11 (Cả nhóm):** Kiểm thử hệ thống (Integration Test): Giả lập gửi dữ liệu nhiệt độ lỗi từ Mongo để kiểm tra xem SQL có tự động chuyển trạng thái `ALARM` và khóa bàn giao không.
+
+**Task 12 (Hoàng):** Thực hiện phân tích và chứng minh Race Condition nếu thiếu Isolation Level trong Transaction.
+
+**Task 13 (Huy):** Hoàn thiện logic phân tích rủi ro (Risk Analysis) dựa trên số lần xảy ra lỗi trên từng lộ trình.
+
+**Task 14 (Lực):** Tổng hợp báo cáo (Report), hoàn thiện README và AI Audit Log để nộp bài.
+
+---
+
