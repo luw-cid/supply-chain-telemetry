@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const { connectMySQL } = require('./configs/sql.config');
 const { connectMongoDB } = require('./configs/mongodb.config');
+const { runMigration } = require('./configs/migration');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,8 +12,11 @@ app.use(express.urlencoded({ extended: true }));
 
 async function startServer() {
     try {
-        await connectMongoDB();
+        // await connectMongoDB(); // Comment tạm nếu chưa cài MongoDB
         await connectMySQL();
+        
+        // Tự động chạy migration khi khởi động
+        await runMigration();
 
         app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
