@@ -128,10 +128,7 @@ CREATE TABLE IF NOT EXISTS CargoProfiles (
         HumidityMin IS NULL OR 
         HumidityMax IS NULL OR 
         HumidityMin < HumidityMax
-    ),
-    
-    -- Index để query by refrigeration requirement
-    INDEX idx_cargo_refrigeration (RequiresRefrigeration)
+    )
 ) ENGINE=InnoDB COMMENT='Defines transport conditions for cargo types';
 
 -- ============================================================================
