@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const { connectMySQL } = require('./configs/sql.config');
 const { connectMongoDB } = require('./configs/mongodb.config');
@@ -12,7 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 async function startServer() {
     try {
-        // await connectMongoDB(); // Comment tạm nếu chưa cài MongoDB
+        await connectMongoDB();
         await connectMySQL();
         
         // Tự động chạy migration khi khởi động
