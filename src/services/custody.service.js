@@ -16,35 +16,28 @@
  */
 
 const { pool } = require('../configs/sql.config');
+const AppError = require('../utils/app-error');
 
 // ── Helpers lỗi nhất quán theo pattern của codebase ──────────────────────────
 
 /** Tạo lỗi HTTP 400 Bad Request */
 function badRequest(message) {
-  const err = new Error(message);
-  err.statusCode = 400;
-  return err;
+  return AppError.badRequest(message);
 }
 
 /** Tạo lỗi HTTP 403 Forbidden */
 function forbidden(message) {
-  const err = new Error(message);
-  err.statusCode = 403;
-  return err;
+  return AppError.forbidden(message);
 }
 
 /** Tạo lỗi HTTP 404 Not Found */
 function notFound(message) {
-  const err = new Error(message);
-  err.statusCode = 404;
-  return err;
+  return AppError.notFound(message);
 }
 
 /** Tạo lỗi HTTP 409 Conflict */
 function conflict(message) {
-  const err = new Error(message);
-  err.statusCode = 409;
-  return err;
+  return AppError.conflict(message);
 }
 
 // ── Map thông báo lỗi từ Stored Procedure sang HTTP status tương ứng ─────────

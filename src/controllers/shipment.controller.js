@@ -3,7 +3,7 @@ const {
   getShipmentDetails,
 } = require('../services/shipment.service');
 
-async function createShipmentController(req, res) {
+async function createShipmentController(req, res, next) {
   try {
     const data = await createShipment(req.body);
     return res.status(201).json({
@@ -11,14 +11,11 @@ async function createShipmentController(req, res) {
       data,
     });
   } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      success: false,
-      error: error.message || 'Internal server error',
-    });
+    return next(error);
   }
 }
 
-async function getShipmentDetailsController(req, res) {
+async function getShipmentDetailsController(req, res, next) {
   try {
     const data = await getShipmentDetails(req.params.id);
     return res.status(200).json({
@@ -26,10 +23,7 @@ async function getShipmentDetailsController(req, res) {
       data,
     });
   } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      success: false,
-      error: error.message || 'Internal server error',
-    });
+    return next(error);
   }
 }
 

@@ -1,6 +1,6 @@
 const { register, login } = require('../services/auth.service');
 
-async function registerController(req, res) {
+async function registerController(req, res, next) {
   try {
     const data = await register(req.body);
     return res.status(201).json({
@@ -8,14 +8,11 @@ async function registerController(req, res) {
       data,
     });
   } catch (error) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      error: error.message || 'Bad request',
-    });
+    return next(error);
   }
 }
 
-async function loginController(req, res) {
+async function loginController(req, res, next) {
   try {
     const data = await login(req.body);
     return res.status(200).json({
@@ -23,10 +20,7 @@ async function loginController(req, res) {
       data,
     });
   } catch (error) {
-    return res.status(error.statusCode || 401).json({
-      success: false,
-      error: error.message || 'Unauthorized',
-    });
+    return next(error);
   }
 }
 

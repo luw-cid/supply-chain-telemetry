@@ -38,7 +38,7 @@ const {
  *
  * Error responses: 400 | 401 | 403 | 404 | 409 | 500
  */
-async function transferOwnershipController(req, res) {
+async function transferOwnershipController(req, res, next) {
   try {
     const shipmentId = req.params.id;
     const result = await transferOwnership(shipmentId, req.body);
@@ -56,11 +56,7 @@ async function transferOwnershipController(req, res) {
       },
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    return res.status(statusCode).json({
-      success: false,
-      error: error.message || 'Internal server error',
-    });
+    return next(error);
   }
 }
 
@@ -81,7 +77,7 @@ async function transferOwnershipController(req, res) {
  *
  * Error responses: 400 | 401 | 404 | 500
  */
-async function getOwnershipHistoryController(req, res) {
+async function getOwnershipHistoryController(req, res, next) {
   try {
     const shipmentId = req.params.id;
     const detailLevel = req.query.detail || 'DETAILED';
@@ -93,11 +89,7 @@ async function getOwnershipHistoryController(req, res) {
       data: result,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    return res.status(statusCode).json({
-      success: false,
-      error: error.message || 'Internal server error',
-    });
+    return next(error);
   }
 }
 

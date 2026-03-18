@@ -15,7 +15,7 @@
 //   3. Thêm SMTP_HOST, SMTP_USER, SMTP_PASS vào .env
 // ============================================================================
 
-const { pool } = require('../configs/sql.config');
+const notificationRepository = require('../repositories/notification.repository');
 
 // ---- Cấu hình ----------------------------------------------------------------
 const MAX_RETRY = 3; // Số lần retry tối đa trước khi mark FAILED
@@ -249,12 +249,9 @@ function _buildAlarmEmailBody({ shipment_id, alarm_reason, alarm_at, temp, temp_
 async function getPartyContact(partyId) {
     if (!partyId) return { email: null, name: null };
     try {
-        const [rows] = await pool.query(
-            'SELECT Name, Email FROM Parties WHERE PartyID = ? LIMIT 1',
-            [partyId]
-        );
-        if (rows.length === 0) return { email: null, name: null };
-        return { email: rows[0].Email, name: rows[0].Name };
+        const party = await notificationRepository.findPartyContactById(partyId);
+        if (!party) return { email: null, name: null };
+        return { email: party.Email, name: party.Name };
     } catch (err) {
         console.error(`[NotificationService] Failed to get contact for party ${partyId}:`, err.message);
         return { email: null, name: null };

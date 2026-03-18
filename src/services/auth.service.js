@@ -2,33 +2,22 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { randomUUID } = require('crypto');
 const authRepository = require('../repositories/auth.repository');
-
-function badRequest(message) {
-	const error = new Error(message);
-	error.statusCode = 400;
-	return error;
-}
-
-function unauthorized(message) {
-	const error = new Error(message);
-	error.statusCode = 401;
-	return error;
-}
+const AppError = require('../utils/app-error');
 
 async function register({ name, email, phone, password, role = 'OWNER', partyId = null }) {
 	if (!name || !email || !phone || !password) {
-		throw badRequest('Name, email, phone and password are required');
+		throw AppError.badRequest('Name, email, phone and password are required');
 	}
 
 	if (typeof password !== 'string' || password.length < 8) {
-		throw badRequest('Password must be at least 8 characters');
+		throw AppError.badRequest('Password must be at least 8 characters');
 	}
 
 	const normalizedEmail = String(email).trim().toLowerCase();
 
 	const existingUser = await authRepository.findUserByEmail(normalizedEmail);
 	if (existingUser) {
-		throw badRequest('Email already exists');
+		throw AppError.badRequest('Email already exists');
 	}
 
 	const passwordHash = await bcrypt.hash(password, 10);
@@ -37,7 +26,7 @@ async function register({ name, email, phone, password, role = 'OWNER', partyId 
 	const normalizedName = String(name).trim();
 	const normalizedPhone = String(phone).trim();
 	if (!normalizedPhone) {
-		throw badRequest('Phone is required');
+		throw AppError.badRequest('Phone is required');
 	}
 
 	await authRepository.createUser({
@@ -62,26 +51,26 @@ async function register({ name, email, phone, password, role = 'OWNER', partyId 
 
 async function login({ email, password }) {
 	if (!email || !password) {
-		throw badRequest('Email and password are required');
+		throw AppError.badRequest('Email and password are required');
 	}
 
 	const normalizedEmail = String(email).trim().toLowerCase();
 
 	const user = await authRepository.findUserByEmail(normalizedEmail);
 	if (!user) {
-		throw unauthorized('Invalid credentials');
+		throw AppError.unauthorized('Invalid credentials');
 	}
 	if (user.Status !== 'ACTIVE') {
-		throw unauthorized('User is not active');
+		throw AppError.unauthorized('User is not active');
 	}
 
 	const isValid = await bcrypt.compare(password, user.PasswordHash);
 	if (!isValid) {
-		throw unauthorized('Invalid credentials');
+		throw AppError.unauthorized('Invalid credentials');
 	}
 
 	if (!process.env.JWT_SECRET) {
-		throw new Error('Missing JWT_SECRET in environment');
+		throw AppError.internal('Missing JWT_SECRET in environment');
 	}
 
 	const accessToken = jwt.sign(

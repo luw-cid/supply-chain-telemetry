@@ -19,6 +19,7 @@
 const TelemetryPoints             = require('../models/mongodb/telemetry_points');
 const { pool }                    = require('../configs/sql.config');
 const { getPartyContact }         = require('./notification.service');
+const AppError                    = require('../utils/app-error');
 
 // ============================================================================
 // PUBLIC: INGEST TELEMETRY
@@ -49,9 +50,7 @@ async function ingestTelemetry(telemetryPoint) {
 
     // ── 1. Validate input ────────────────────────────────────────────────────
     if (!shipment_id || !device_id || !location?.lng || !location?.lat || typeof temp !== 'number') {
-        const err = new Error('Missing required telemetry fields');
-        err.statusCode = 400;
-        throw err;
+        throw AppError.badRequest('Missing required telemetry fields');
     }
 
     // ── 2. Ghi telemetry vào MongoDB ─────────────────────────────────────────
@@ -73,9 +72,7 @@ async function ingestTelemetry(telemetryPoint) {
     const tempMax = row?.TempMax;
 
     if (tempMax == null) {
-        const err = new Error(`TempMax not found for shipment ${shipment_id}`);
-        err.statusCode = 404;
-        throw err;
+        throw AppError.notFound(`TempMax not found for shipment ${shipment_id}`);
     }
 
     // ── 4. Kiểm tra vi phạm & thực thi Outbox Pattern ───────────────────────

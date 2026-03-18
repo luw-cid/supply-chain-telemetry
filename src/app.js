@@ -10,13 +10,13 @@ require('dotenv').config({ path: envPath });
 const express = require('express');
 const { connectMySQL } = require('./configs/sql.config');
 const { connectMongoDB } = require('./configs/mongodb.config');
-<<<<<<< HEAD
+
 const routes = require('./routes/route');
-=======
-const telemetryRouter = require('./routes/telemetry.route');
-const authRouter = require('./routes/auth.route');
-const custodyRouter = require('./routes/custody.route');
->>>>>>> origin/main
+const {
+  notFoundHandler,
+  errorHandler,
+} = require('./middlewares/error-handler.middleware');
+
 // const { runMigration } = require('./configs/migration');
 
 const app = express();
@@ -26,14 +26,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Mount routes
-<<<<<<< HEAD
 app.use(routes);
-=======
-app.use('/api', telemetryRouter);
-app.use('/api/auth', authRouter);
-// Nhóm API Chuỗi Sở Hữu (Chain of Custody) — 3.1 & 3.2
-app.use('/api/v1/shipments', custodyRouter);
->>>>>>> origin/main
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 async function startServer() {
   try {

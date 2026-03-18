@@ -9,6 +9,7 @@
 
 const { findOptimalRoutes, getRouteStatistics } = require('../database/mongo/route_optimization_aggregation');
 const PortEdges = require('../models/mongodb/port_edges');
+const AppError = require('../utils/app-error');
 
 /**
  * ============================================================================
@@ -79,7 +80,7 @@ async function getOptimalRoutes(originPort, destinationPort, options = {}) {
 async function compareRoutes(routes) {
   try {
     if (!routes || routes.length < 2) {
-      throw new Error('At least 2 routes required for comparison');
+      throw AppError.badRequest('At least 2 routes required for comparison');
     }
 
     const comparison = {
