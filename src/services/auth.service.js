@@ -1,7 +1,7 @@
-const { pool } = require('../configs/sql.config');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { randomUUID } = require('crypto');
+const authRepository = require('../repositories/auth.repository');
 
 function badRequest(message) {
 	const error = new Error(message);
@@ -26,12 +26,8 @@ async function register({ name, email, phone, password, role = 'OWNER', partyId 
 
 	const normalizedEmail = String(email).trim().toLowerCase();
 
-	const [existingUsers] = await pool.query(
-		'SELECT UserID FROM Users WHERE Email = ? LIMIT 1',
-		[normalizedEmail]
-	);
-
-	if (existingUsers.length > 0) {
+	const existingUser = await authRepository.findUserByEmail(normalizedEmail);
+	if (existingUser) {
 		throw badRequest('Email already exists');
 	}
 
@@ -44,11 +40,15 @@ async function register({ name, email, phone, password, role = 'OWNER', partyId 
 		throw badRequest('Phone is required');
 	}
 
-	await pool.query(
-		`INSERT INTO Users (UserID, Name, Email, Phone, PasswordHash, Role, PartyID, Status)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
-		[userId, normalizedName, normalizedEmail, normalizedPhone, passwordHash, role, partyId]
-	);
+	await authRepository.createUser({
+		userId,
+		name: normalizedName,
+		email: normalizedEmail,
+		phone: normalizedPhone,
+		passwordHash,
+		role,
+		partyId,
+	});
 
 	return {
 		userId,
@@ -67,19 +67,10 @@ async function login({ email, password }) {
 
 	const normalizedEmail = String(email).trim().toLowerCase();
 
-	const [rows] = await pool.query(
-		`SELECT UserID, Name, Email, Phone, PasswordHash, Role, PartyID, Status
-		 FROM Users
-		 WHERE Email = ?
-		 LIMIT 1`,
-		[normalizedEmail]
-	);
-
-	if (rows.length === 0) {
+	const user = await authRepository.findUserByEmail(normalizedEmail);
+	if (!user) {
 		throw unauthorized('Invalid credentials');
 	}
-
-	const user = rows[0];
 	if (user.Status !== 'ACTIVE') {
 		throw unauthorized('User is not active');
 	}

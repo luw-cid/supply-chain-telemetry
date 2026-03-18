@@ -10,8 +10,7 @@ require('dotenv').config({ path: envPath });
 const express = require('express');
 const { connectMySQL } = require('./configs/sql.config');
 const { connectMongoDB } = require('./configs/mongodb.config');
-const telemetryRouter = require('./routes/telemetry.route');
-const authRouter = require('./routes/auth.route');
+const routes = require('./routes/route');
 // const { runMigration } = require('./configs/migration');
 
 const app = express();
@@ -21,8 +20,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Mount routes
-app.use('/api', telemetryRouter);
-app.use('/api/auth', authRouter);
+app.use(routes);
 
 async function startServer() {
   try {
