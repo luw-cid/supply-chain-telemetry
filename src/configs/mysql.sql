@@ -50,6 +50,34 @@ CREATE TABLE IF NOT EXISTS Parties (
 ) ENGINE=InnoDB COMMENT='Stores information about all parties in supply chain';
 
 -- ============================================================================
+-- TABLE: Users
+-- Description: Stores system user accounts for authentication/authorization
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS Users (
+    UserID        CHAR(36)      NOT NULL,
+    Name          VARCHAR(255)  NOT NULL,
+    Email         VARCHAR(255)  NOT NULL,
+    Phone         VARCHAR(32)   NULL,
+    PasswordHash  VARCHAR(255)  NOT NULL,
+    Role          ENUM('ADMIN','OWNER','LOGISTICS','AUDITOR') NOT NULL DEFAULT 'OWNER',
+    PartyID       VARCHAR(32)   NULL,
+    Status        ENUM('ACTIVE','INACTIVE','SUSPENDED') NOT NULL DEFAULT 'ACTIVE',
+    CreatedAtUTC  TIMESTAMP(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    UpdatedAtUTC  TIMESTAMP(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+
+    PRIMARY KEY (UserID),
+
+    UNIQUE KEY uq_users_email (Email),
+    INDEX idx_users_party (PartyID),
+    INDEX idx_users_role_status (Role, Status),
+
+    CONSTRAINT fk_users_party
+        FOREIGN KEY (PartyID) REFERENCES Parties(PartyID)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE=InnoDB COMMENT='Stores user accounts for the supply chain application';
+
+-- ============================================================================
 -- TABLE: Ports
 -- Description: Stores information about seaports, airports, and inland ports
 -- ============================================================================

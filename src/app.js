@@ -1,8 +1,17 @@
-require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
+
+const envCandidates = [
+  path.join(__dirname, '../.env'),
+  path.join(__dirname, '.env'),
+];
+const envPath = envCandidates.find((p) => fs.existsSync(p)) || envCandidates[0];
+require('dotenv').config({ path: envPath });
 const express = require('express');
 const { connectMySQL } = require('./configs/sql.config');
 const { connectMongoDB } = require('./configs/mongodb.config');
 const telemetryRouter = require('./routes/telemetry.route');
+const authRouter = require('./routes/auth.route');
 // const { runMigration } = require('./configs/migration');
 
 const app = express();
@@ -13,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Mount routes
 app.use('/api', telemetryRouter);
+app.use('/api/auth', authRouter);
 
 async function startServer() {
   try {
