@@ -10,12 +10,19 @@
  * USAGE:
  * npm test -- test_trace_route_aggregation.js
  * hoặc
- * node src/database/mongo/test_trace_route_aggregation.js
+ * node src/database/test/test_trace_route_aggregation.js
  * ============================================================================
  */
 
 const mongoose = require('mongoose');
 const { expect } = require('chai');
+const {
+  describe,
+  it,
+  before,
+  after,
+  beforeEach
+} = require('mocha');
 const TelemetryPoints = require('../../models/mongodb/telemetry_points');
 const { 
   traceRouteAggregation, 
@@ -60,21 +67,33 @@ class TestDataGenerator {
     } = options;
 
     const points = [];
-    const routeSegmentSize = Math.floor(count / (route.length - 1));
+    const hasRouteSegment = Array.isArray(route) && route.length > 1;
+    const routeSegmentSize = hasRouteSegment
+      ? Math.max(1, Math.floor(count / (route.length - 1)))
+      : 1;
 
     for (let i = 0; i < count; i++) {
-      // Calculate position along route
-      const segmentIndex = Math.min(
-        Math.floor(i / routeSegmentSize),
-        route.length - 2
-      );
-      const segmentProgress = (i % routeSegmentSize) / routeSegmentSize;
-      
-      const startPoint = route[segmentIndex];
-      const endPoint = route[segmentIndex + 1];
-      
-      const lng = startPoint.lng + (endPoint.lng - startPoint.lng) * segmentProgress;
-      const lat = startPoint.lat + (endPoint.lat - startPoint.lat) * segmentProgress;
+      let lng;
+      let lat;
+
+      if (hasRouteSegment) {
+        // Keep route interpolation stable for tiny datasets (e.g. count = 1).
+        const segmentIndex = Math.min(
+          Math.floor(i / routeSegmentSize),
+          route.length - 2
+        );
+        const segmentProgress = (i % routeSegmentSize) / routeSegmentSize;
+
+        const startPoint = route[segmentIndex];
+        const endPoint = route[segmentIndex + 1];
+
+        lng = startPoint.lng + (endPoint.lng - startPoint.lng) * segmentProgress;
+        lat = startPoint.lat + (endPoint.lat - startPoint.lat) * segmentProgress;
+      } else {
+        const fallbackPoint = route[0] || { lng: 0, lat: 0 };
+        lng = fallbackPoint.lng;
+        lat = fallbackPoint.lat;
+      }
 
       // Calculate temperature with some violations
       let temp = baseTemp + (Math.random() * tempVariation);

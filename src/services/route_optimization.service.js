@@ -284,7 +284,7 @@ function generateCargoSpecificRecommendations(cargoType, routes) {
     recommendations.push('Minimize transit stops to reduce handling risk');
     
     if (routes[0]?.summary.total_hours > 72) {
-      recommendations.push('⚠️ Route exceeds 72 hours - verify cold chain capacity');
+      recommendations.push('Route exceeds 72 hours - verify cold chain capacity');
     }
   }
 
@@ -299,7 +299,7 @@ function generateCargoSpecificRecommendations(cargoType, routes) {
     recommendations.push('Plan for customs clearance delays');
     
     if (routes[0]?.summary.total_stops > 1) {
-      recommendations.push('⚠️ Multiple stops increase spoilage risk');
+      recommendations.push('Multiple stops increase spoilage risk');
     }
   }
 
