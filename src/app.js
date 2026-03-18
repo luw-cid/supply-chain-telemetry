@@ -16,7 +16,7 @@ async function startServer() {
         await connectMySQL();
         
         // Tự động chạy migration khi khởi động
-        await runMigration();
+        //await runMigration();
 
         app.listen(port, () => {
             console.log(`Server is running on port ${port}`);

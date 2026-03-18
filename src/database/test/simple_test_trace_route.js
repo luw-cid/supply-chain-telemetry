@@ -8,7 +8,7 @@
  * ============================================================================
  * 
  * USAGE:
- * node src/database/mongo/simple_test_trace_route.js
+ * node src/database/test/simple_test_trace_route.js
  * ============================================================================
  */
 

@@ -4,8 +4,6 @@
  * ============================================================================
  * Description: Tìm lộ trình tối ưu giữa 2 cảng sử dụng Graph Traversal
  * Collection: port_edges
- * Author: Senior Database Engineer
- * Created: 2026-03-04
  * 
  * GRAPH ALGORITHM STRATEGY:
  * ============================================================================
@@ -210,11 +208,6 @@ async function findOptimalRoutes(originPort, destinationPort, options = {}) {
 
     // ========================================================================
     // STAGE 2: PATH RECONSTRUCTION (Application Layer)
-    // ========================================================================
-    // Đây là phần "cú lừa" mà video YouTube cảnh báo!
-    // $graphLookup trả về mảng phẳng, ta phải tự build paths.
-    // 
-    // ALGORITHM: Backtracking từ destination về origin
     // ========================================================================
 
     const allPaths = [];
