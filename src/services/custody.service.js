@@ -210,7 +210,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
     );
     // mysql2 trả về mảng result sets khi CALL SP có SELECT,
     // result[0] là rows của SELECT đầu tiên bên trong SP
-    rows = Array.isArray(result) ? result : [];
+    rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : [];
   } catch (spError) {
     // SP dùng SIGNAL SQLSTATE '45000' khi shipment không tồn tại
     const msg = spError.message || '';
