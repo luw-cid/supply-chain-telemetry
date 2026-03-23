@@ -38,26 +38,22 @@ const {
  *
  * Error responses: 400 | 401 | 403 | 404 | 409 | 500
  */
-async function transferOwnershipController(req, res, next) {
-  try {
-    const shipmentId = req.params.id;
-    const result = await transferOwnership(shipmentId, req.body);
+async function transferOwnershipController(req, res) {
+  const shipmentId = req.params.id;
+  const result = await transferOwnership(shipmentId, req.body);
 
-    return res.status(200).json({
-      success: true,
-      message: result.message || 'Custody transfer completed successfully',
-      data: {
-        shipmentId: result.shipmentId,
-        fromPartyId: result.fromPartyId,
-        toPartyId: result.toPartyId,
-        handoverPortCode: result.handoverPortCode,
-        handoverCondition: result.handoverCondition,
-        transferredAtUTC: result.transferredAtUTC,
-      },
-    });
-  } catch (error) {
-    return next(error);
-  }
+  return res.status(200).json({
+    success: true,
+    message: result.message || 'Custody transfer completed successfully',
+    data: {
+      shipmentId: result.shipmentId,
+      fromPartyId: result.fromPartyId,
+      toPartyId: result.toPartyId,
+      handoverPortCode: result.handoverPortCode,
+      handoverCondition: result.handoverCondition,
+      transferredAtUTC: result.transferredAtUTC,
+    },
+  });
 }
 
 // ============================================================================
@@ -77,20 +73,16 @@ async function transferOwnershipController(req, res, next) {
  *
  * Error responses: 400 | 401 | 404 | 500
  */
-async function getOwnershipHistoryController(req, res, next) {
-  try {
-    const shipmentId = req.params.id;
-    const detailLevel = req.query.detail || 'DETAILED';
+async function getOwnershipHistoryController(req, res) {
+  const shipmentId = req.params.id;
+  const detailLevel = req.query.detail || 'DETAILED';
 
-    const result = await getOwnershipHistory(shipmentId, detailLevel);
+  const result = await getOwnershipHistory(shipmentId, detailLevel);
 
-    return res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    return next(error);
-  }
+  return res.status(200).json({
+    success: true,
+    data: result,
+  });
 }
 
 module.exports = {

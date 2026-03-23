@@ -15,6 +15,7 @@ function errorHandler(err, req, res, next) {
       path: req.originalUrl,
       message: error.message,
       code: error.code,
+      stack: err?.stack,
     });
   }
 
