@@ -17,8 +17,8 @@
 //   - stop()   : dừng polling (graceful shutdown)
 // ============================================================================
 
-const { pool }          = require('../configs/sql.config');
 const { sendNotification, MAX_RETRY } = require('./notification.service');
+const outboxRepository = require('../repositories/outbox.repository');
 
 // ---- Cấu hình ---------------------------------------------------------------
 const POLL_INTERVAL_MS  = 5_000;  // Quét mỗi 5 giây
@@ -114,52 +114,7 @@ async function _poll() {
  * @returns {Promise<Array>} Danh sách event rows (payload đã được parse thành object)
  */
 async function _fetchPendingEvents() {
-    const connection = await pool.getConnection();
-    let events = [];
-
-    try {
-        await connection.beginTransaction();
-
-        // Khóa các row PENDING để worker khác không lấy trùng
-        const [rows] = await connection.query(
-            `SELECT id, event_type, payload, retry_count
-             FROM   outbox_events
-             WHERE  status = 'PENDING'
-               AND  (scheduled_at IS NULL OR scheduled_at <= NOW())
-             ORDER  BY created_at ASC
-             LIMIT  ?
-             FOR UPDATE SKIP LOCKED`,
-            [BATCH_SIZE]
-        );
-
-        if (rows.length > 0) {
-            const ids = rows.map(r => r.id);
-
-            // Mark PROCESSING để tránh worker khác xử lý trùng
-            await connection.query(
-                `UPDATE outbox_events
-                 SET    status = 'PROCESSING'
-                 WHERE  id IN (?)`,
-                [ids]
-            );
-        }
-
-        await connection.commit();
-
-        // Parse JSON payload từ string (mysql2 trả về string nếu không config)
-        events = rows.map(row => ({
-            ...row,
-            payload: typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload,
-        }));
-
-    } catch (err) {
-        await connection.rollback();
-        throw err;
-    } finally {
-        connection.release();
-    }
-
-    return events;
+    return outboxRepository.fetchAndMarkPendingEvents(BATCH_SIZE);
 }
 
 /**
@@ -199,34 +154,15 @@ async function _processEvent(event) {
 // ---- Helpers cập nhật status ------------------------------------------------
 
 async function _markProcessed(id) {
-    await pool.query(
-        `UPDATE outbox_events
-         SET status       = 'PROCESSED',
-             processed_at = CURRENT_TIMESTAMP(6)
-         WHERE id = ?`,
-        [id]
-    );
+    await outboxRepository.markProcessed(id);
 }
 
 async function _markFailed(id, errorMsg) {
-    await pool.query(
-        `UPDATE outbox_events
-         SET status     = 'FAILED',
-             last_error = ?
-         WHERE id = ?`,
-        [errorMsg ? errorMsg.substring(0, 500) : 'Unknown error', id]
-    );
+    await outboxRepository.markFailed(id, errorMsg);
 }
 
 async function _markRetry(id, newRetryCount, errorMsg) {
-    await pool.query(
-        `UPDATE outbox_events
-         SET status      = 'PENDING',
-             retry_count = ?,
-             last_error  = ?
-         WHERE id = ?`,
-        [newRetryCount, errorMsg ? errorMsg.substring(0, 500) : 'Unknown error', id]
-    );
+    await outboxRepository.markRetry(id, newRetryCount, errorMsg);
 }
 
 // ============================================================================

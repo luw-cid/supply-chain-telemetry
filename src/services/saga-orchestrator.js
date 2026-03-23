@@ -16,8 +16,7 @@
 //   5. Outbox Processor (chạy ngầm) sẽ đọc event và gửi notification
 // ============================================================================
 
-const TelemetryPoints             = require('../models/mongodb/telemetry_points');
-const { pool }                    = require('../configs/sql.config');
+const sagaRepository              = require('../repositories/saga.repository');
 const { getPartyContact }         = require('./notification.service');
 const AppError                    = require('../utils/app-error');
 
@@ -54,21 +53,17 @@ async function ingestTelemetry(telemetryPoint) {
     }
 
     // ── 2. Ghi telemetry vào MongoDB ─────────────────────────────────────────
-    const point = await TelemetryPoints.create({
-        meta: { shipment_id, device_id },
-        t: timestamp ? new Date(timestamp) : new Date(),
-        location: {
-            type: 'Point',
-            coordinates: [location.lng, location.lat],
-        },
+    const point = await sagaRepository.insertTelemetryPoint({
+        shipmentId: shipment_id,
+        deviceId: device_id,
+        timestamp,
+        location,
         temp,
         humidity,
     });
 
     // ── 3. Lấy TempMax + thông tin shipment từ MySQL ─────────────────────────
-    const [spResult] = await pool.query('CALL SP_TraceRouteContext(?)', [shipment_id]);
-
-    const row    = Array.isArray(spResult) ? (spResult[0]?.[0] ?? spResult[0]) : undefined;
+    const row = await sagaRepository.getTraceRouteContext(shipment_id);
     const tempMax = row?.TempMax;
 
     if (tempMax == null) {
@@ -83,7 +78,7 @@ async function ingestTelemetry(telemetryPoint) {
 
         // Lấy thông tin liên hệ của shipper và consignee để nhúng vào payload.
         // Làm TRƯỚC transaction để tránh giữ lock lâu trong transaction.
-        const { shipper_id, consignee_id } = await _getShipmentParties(shipment_id);
+        const { shipper_id, consignee_id } = await _safeGetShipmentParties(shipment_id);
         const [shipperContact, consigneeContact] = await Promise.all([
             getPartyContact(shipper_id),
             getPartyContact(consignee_id),
@@ -107,30 +102,12 @@ async function ingestTelemetry(telemetryPoint) {
         };
 
         // ── ATOMIC TRANSACTION: cập nhật DB + ghi outbox cùng lúc ────────────
-        const connection = await pool.getConnection();
         try {
-            await connection.beginTransaction();
-
-            // a) Cập nhật trạng thái vi phạm trên Shipments
-            //    → TRG_CHECK_VIOLATION sẽ tự set Status = 'ALARM' và AlarmAtUTC
-            await connection.query(
-                `UPDATE Shipments
-                 SET LastTelemetryStatus = 'VIOLATION',
-                     LastTelemetryAtUTC  = CURRENT_TIMESTAMP(6),
-                     AlarmReason         = COALESCE(AlarmReason, ?)
-                 WHERE ShipmentID = ?`,
-                [outboxPayload.alarm_reason, shipment_id]
-            );
-
-            // b) Ghi event vào outbox_events trong CÙNG transaction
-            //    → Đảm bảo: nếu UPDATE thành công thì notification CHẮC CHẮN sẽ được gửi
-            await connection.query(
-                `INSERT INTO outbox_events (event_type, payload)
-                 VALUES ('ALARM_TRIGGERED', ?)`,
-                [JSON.stringify(outboxPayload)]
-            );
-
-            await connection.commit();
+            await sagaRepository.markViolationAndEnqueueAlarm({
+                shipmentId: shipment_id,
+                alarmReason: outboxPayload.alarm_reason,
+                outboxPayload,
+            });
 
             console.log(
                 `[SagaOrchestrator] ✅ Shipment ${shipment_id} marked VIOLATION. ` +
@@ -138,11 +115,8 @@ async function ingestTelemetry(telemetryPoint) {
             );
 
         } catch (err) {
-            await connection.rollback();
             console.error(`[SagaOrchestrator] ❌ Transaction rolled back for shipment ${shipment_id}:`, err.message);
             throw err;
-        } finally {
-            connection.release();
         }
     }
 
@@ -166,20 +140,9 @@ async function ingestTelemetry(telemetryPoint) {
  * @param {string} shipmentId
  * @returns {Promise<{shipper_id: string|null, consignee_id: string|null}>}
  */
-async function _getShipmentParties(shipmentId) {
+async function _safeGetShipmentParties(shipmentId) {
     try {
-        const [rows] = await pool.query(
-            `SELECT ShipperPartyID, ConsigneePartyID
-             FROM   Shipments
-             WHERE  ShipmentID = ?
-             LIMIT  1`,
-            [shipmentId]
-        );
-        if (rows.length === 0) return { shipper_id: null, consignee_id: null };
-        return {
-            shipper_id:   rows[0].ShipperPartyID   || null,
-            consignee_id: rows[0].ConsigneePartyID || null,
-        };
+        return await sagaRepository.getShipmentParties(shipmentId);
     } catch (err) {
         console.error(`[SagaOrchestrator] Failed to get parties for shipment ${shipmentId}:`, err.message);
         return { shipper_id: null, consignee_id: null };

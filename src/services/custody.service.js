@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-const { pool } = require('../configs/sql.config');
+const custodyRepository = require('../repositories/custody.repository');
 const AppError = require('../utils/app-error');
 
 // ── Helpers lỗi nhất quán theo pattern của codebase ──────────────────────────
@@ -127,32 +127,23 @@ async function transferOwnership(shipmentId, body) {
   // ── 2. Gọi Stored Procedure qua CALL + lấy OUT params bằng session vars ──
   //   Bước SET @p_success, @p_message trước đảm bảo giá trị luôn được khởi
   //   tạo dù SP có chạy hay không (tránh đọc NULL từ phiên cũ).
-  await pool.query('SET @p_success = 0, @p_message = NULL');
+  await custodyRepository.initializeOutParams();
 
-  await pool.query(
-    `CALL sp_change_custody(
-      ?, ?, ?, ?, ?, ?, ?, ?,
-      @p_success, @p_message
-    )`,
-    [
-      String(shipmentId).trim(),
-      String(fromPartyId).trim(),
-      String(toPartyId).trim(),
-      String(handoverPortCode).trim(),
-      handoverCondition,
-      handoverNotes,
-      handoverSignature,
-      witnessPartyId,
-    ]
-  );
+  await custodyRepository.executeChangeCustody({
+    shipmentId: String(shipmentId).trim(),
+    fromPartyId: String(fromPartyId).trim(),
+    toPartyId: String(toPartyId).trim(),
+    handoverPortCode: String(handoverPortCode).trim(),
+    handoverCondition,
+    handoverNotes,
+    handoverSignature,
+    witnessPartyId,
+  });
 
   // ── 3. Đọc kết quả OUT params ────────────────────────────────────────────
-  const [[outRow]] = await pool.query(
-    'SELECT @p_success AS success, @p_message AS message'
-  );
-
-  const spSuccess = Number(outRow.success) === 1;
-  const spMessage = outRow.message;
+  const out = await custodyRepository.getChangeCustodyOutParams();
+  const spSuccess = out.success;
+  const spMessage = out.message;
 
   // ── 4. Xử lý kết quả ────────────────────────────────────────────────────
   if (!spSuccess) {
@@ -204,13 +195,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
   //   sẽ reject promise với error.message chứa nội dung SIGNAL.
   let rows;
   try {
-    const [result] = await pool.query(
-      'CALL SP_TraceChainOfCustodyRecursive(?, ?)',
-      [String(shipmentId).trim(), level]
-    );
-    // mysql2 trả về mảng result sets khi CALL SP có SELECT,
-    // result[0] là rows của SELECT đầu tiên bên trong SP
-    rows = Array.isArray(result) ? result : [];
+    rows = await custodyRepository.fetchOwnershipHistory(String(shipmentId).trim(), level);
   } catch (spError) {
     // SP dùng SIGNAL SQLSTATE '45000' khi shipment không tồn tại
     const msg = spError.message || '';
