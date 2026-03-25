@@ -3,8 +3,8 @@ const { ingestTelemetryController } = require('../controllers/telemetry.controll
 
 const router = express.Router();
 
-// POST /api/telemetry
-router.post('/telemetry', ingestTelemetryController);
+// POST /api/v1/telemetry/ingest
+router.post('/ingest', ingestTelemetryController);
 
 module.exports = router;
 

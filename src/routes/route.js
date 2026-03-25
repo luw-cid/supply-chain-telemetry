@@ -5,9 +5,9 @@ const shipmentRouter = require('./shipment.route');
 
 const router = express.Router();
 
-router.use('/api', telemetryRouter);
-router.use('/api/auth', authRouter);
-router.use('/api/shipments', shipmentRouter);
+router.use('/telemetry', telemetryRouter);
+router.use('/auth', authRouter);
+router.use('/shipments', shipmentRouter);
 
 module.exports = router;
 

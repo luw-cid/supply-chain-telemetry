@@ -70,7 +70,6 @@ CREATE TABLE IF NOT EXISTS Users (
     UNIQUE KEY uq_users_email (Email),
     INDEX idx_users_party (PartyID),
     INDEX idx_users_role_status (Role, Status),
-
     CONSTRAINT fk_users_party
         FOREIGN KEY (PartyID) REFERENCES Parties(PartyID)
         ON UPDATE CASCADE
