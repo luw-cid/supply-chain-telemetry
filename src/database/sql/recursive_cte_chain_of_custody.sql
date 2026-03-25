@@ -85,8 +85,8 @@ BEGIN
                 o.ShipmentID,
                 o.PartyID AS CurrentOwnerPartyID,
                 p_owner.Name AS CurrentOwnerName,
-                NULL AS PreviousOwnerPartyID,
-                NULL AS PreviousOwnerName,
+                CAST(NULL AS CHAR(32)) AS PreviousOwnerPartyID,
+                CAST(NULL AS CHAR(255)) AS PreviousOwnerName,
                 o.StartAtUTC,
                 o.EndAtUTC,
                 CASE
@@ -211,9 +211,9 @@ BEGIN
                 p_owner.Email AS current_owner_email,
                 p_owner.Phone AS current_owner_phone,
                 p_owner.Address AS current_owner_address,
-                NULL AS previous_owner_party_id,
-                NULL AS previous_owner_name,
-                NULL AS previous_owner_type,
+                CAST(NULL AS CHAR(32)) AS previous_owner_party_id,
+                CAST(NULL AS CHAR(255)) AS previous_owner_name,
+                CAST(NULL AS CHAR(32)) AS previous_owner_type,
                 o.StartAtUTC AS start_at_utc,
                 o.EndAtUTC AS end_at_utc,
                 CASE
@@ -232,7 +232,7 @@ BEGIN
                 o.WitnessPartyID AS witness_party_id,
                 witness.Name AS witness_party_name,
                 witness.PartyType AS witness_party_type,
-                CAST(o.StartAtUTC AS CHAR(26)) AS transfer_sequence_path
+                CAST(CAST(o.StartAtUTC AS CHAR(26)) AS CHAR(1000)) AS transfer_sequence_path
             FROM
                 Ownership o
             LEFT JOIN
@@ -286,7 +286,7 @@ BEGIN
                 o_next.WitnessPartyID AS witness_party_id,
                 witness_next.Name AS witness_party_name,
                 witness_next.PartyType AS witness_party_type,
-                CONCAT(cte.transfer_sequence_path, ' -> ', CAST(o_next.StartAtUTC AS CHAR(26))) AS transfer_sequence_path
+                CAST(CONCAT(cte.transfer_sequence_path, ' -> ', CAST(o_next.StartAtUTC AS CHAR(26))) AS CHAR(1000)) AS transfer_sequence_path
             FROM
                 cte_chain_of_custody_detailed cte
             INNER JOIN
@@ -320,6 +320,7 @@ BEGIN
             current_owner_address,
             previous_owner_name,
             previous_owner_type,
+            HandoverPortCode,
             handover_port_name,
             handover_port_country,
             handover_port_latitude,

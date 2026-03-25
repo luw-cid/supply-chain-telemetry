@@ -164,11 +164,11 @@ async function traceRouteAggregation(shipmentId, tempThreshold, maxPoints = 1000
       {
         $addFields: {
           is_violation: {
-            $gt: ['$temp', tempThreshold]
+            $gt: ['$temp', { $toDouble: tempThreshold }]
           },
           // Tính temperature delta (độ lệch so với threshold)
           temp_delta: {
-            $subtract: ['$temp', tempThreshold]
+            $subtract: ['$temp', { $toDouble: tempThreshold }]
           }
         }
       },

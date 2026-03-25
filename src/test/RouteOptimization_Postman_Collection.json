@@ -1,0 +1,369 @@
+{
+  "info": {
+    "name": "Route Optimization API",
+    "description": "API Collection for testing Route Optimization feature (BR-14)\n\nEndpoint: GET /api/v1/analytics/route-optimization\n\nPurpose: Tìm lộ trình tối ưu giữa 2 cảng dựa trên dữ liệu lịch sử",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Basic Route Optimization",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN",
+              "description": "Mã cảng xuất phát (required)"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC",
+              "description": "Mã cảng đích (required)"
+            }
+          ]
+        },
+        "description": "Test case cơ bản: Tìm lộ trình từ VNSGN (Vietnam - Saigon) đến USNYC (USA - New York)\n\nExpected Result:\n- Trả về danh sách routes được rank theo độ tối ưu\n- Mỗi route có path, legs, summary, recommendation\n- Metadata chứa thông tin về constraints và execution time"
+      },
+      "response": []
+    },
+    {
+      "name": "2. Direct Route (Short Distance)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=SGSIN",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "SGSIN"
+            }
+          ]
+        },
+        "description": "Test case: Direct route giữa 2 cảng gần nhau\n\nExpected Result:\n- Trả về direct route (total_stops = 0)\n- Transit time ngắn\n- Có thể có alternative routes với transit stops"
+      },
+      "response": []
+    },
+    {
+      "name": "3. Strict Alarm Rate Filter (5%)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC&maxAlarmRate=0.05",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            },
+            {
+              "key": "maxAlarmRate",
+              "value": "0.05",
+              "description": "Chỉ chấp nhận routes có alarm_rate < 5%"
+            }
+          ]
+        },
+        "description": "Test case: Strict filtering cho hàng nhạy cảm (vaccine, pharmaceutical)\n\nExpected Result:\n- Chỉ trả về routes có max_alarm_rate <= 5%\n- Số lượng routes ít hơn so với default (10%)\n- Routes an toàn hơn nhưng có thể chậm hơn"
+      },
+      "response": []
+    },
+    {
+      "name": "4. Limit Transit Stops (Max 1)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC&maxTransitStops=1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            },
+            {
+              "key": "maxTransitStops",
+              "value": "1",
+              "description": "Tối đa 1 trạm dừng (2 chặng)"
+            }
+          ]
+        },
+        "description": "Test case: Giới hạn số trạm dừng để giảm handling risk\n\nExpected Result:\n- Tất cả routes có total_stops <= 1\n- Có thể có ít routes hơn\n- Phù hợp cho hàng dễ vỡ hoặc cần giao nhanh"
+      },
+      "response": []
+    },
+    {
+      "name": "5. Top 3 Routes Only",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC&maxRoutes=3",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            },
+            {
+              "key": "maxRoutes",
+              "value": "3",
+              "description": "Chỉ trả về top 3 routes tốt nhất"
+            }
+          ]
+        },
+        "description": "Test case: Giới hạn số lượng routes trả về\n\nExpected Result:\n- Trả về tối đa 3 routes\n- Routes được rank theo optimization_score\n- Top route có score thấp nhất (tốt nhất)"
+      },
+      "response": []
+    },
+    {
+      "name": "6. Filter by Route Type (SEA only)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC&routeType=SEA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            },
+            {
+              "key": "routeType",
+              "value": "SEA",
+              "description": "Chỉ tìm routes đường biển"
+            }
+          ]
+        },
+        "description": "Test case: Filter theo loại vận chuyển\n\nExpected Result:\n- Chỉ trả về routes có route_type = SEA\n- Loại bỏ AIR, LAND, MULTIMODAL routes"
+      },
+      "response": []
+    },
+    {
+      "name": "7. Combined Constraints (Vaccine Shipment)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC&maxAlarmRate=0.05&maxTransitStops=2&maxRoutes=3",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            },
+            {
+              "key": "maxAlarmRate",
+              "value": "0.05",
+              "description": "Strict safety requirement"
+            },
+            {
+              "key": "maxTransitStops",
+              "value": "2",
+              "description": "Minimize handling"
+            },
+            {
+              "key": "maxRoutes",
+              "value": "3",
+              "description": "Top 3 only"
+            }
+          ]
+        },
+        "description": "Test case: Realistic scenario cho vaccine shipment\n\nConstraints:\n- maxAlarmRate = 5% (high safety)\n- maxTransitStops = 2 (minimize handling)\n- maxRoutes = 3 (focused options)\n\nExpected Result:\n- Routes phù hợp cho hàng nhạy cảm\n- Có insights về safety và recommendations"
+      },
+      "response": []
+    },
+    {
+      "name": "8. Error: Missing Origin",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?destination=USNYC",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "destination",
+              "value": "USNYC"
+            }
+          ]
+        },
+        "description": "Test case: Validation error - missing origin\n\nExpected Result:\n- Status: 400 Bad Request\n- Error: MISSING_PARAMETERS\n- Message: Both origin and destination ports are required"
+      },
+      "response": []
+    },
+    {
+      "name": "9. Error: Same Origin and Destination",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=VNSGN",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "VNSGN"
+            }
+          ]
+        },
+        "description": "Test case: Business logic error - same port\n\nExpected Result:\n- Status: 400 Bad Request\n- Error: SAME_PORT\n- Message: Origin and destination cannot be the same"
+      },
+      "response": []
+    },
+    {
+      "name": "10. Error: Invalid Alarm Rate",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC&maxAlarmRate=1.5",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            },
+            {
+              "key": "maxAlarmRate",
+              "value": "1.5",
+              "description": "Invalid value (> 1)"
+            }
+          ]
+        },
+        "description": "Test case: Parameter validation error\n\nExpected Result:\n- Status: 400 Bad Request\n- Error: INVALID_PARAMETER\n- Message: maxAlarmRate must be between 0 and 1"
+      },
+      "response": []
+    },
+    {
+      "name": "11. Error: Port Not Found",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=INVALID&destination=USNYC",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "INVALID"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            }
+          ]
+        },
+        "description": "Test case: Port not found in database\n\nExpected Result:\n- Status: 404 Not Found\n- Error: PORT_NOT_FOUND\n- Message: Origin port INVALID not found in database"
+      },
+      "response": []
+    },
+    {
+      "name": "12. No Routes Found (Strict Constraints)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analytics/route-optimization?origin=VNSGN&destination=USNYC&maxAlarmRate=0.01&maxTransitStops=0",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analytics", "route-optimization"],
+          "query": [
+            {
+              "key": "origin",
+              "value": "VNSGN"
+            },
+            {
+              "key": "destination",
+              "value": "USNYC"
+            },
+            {
+              "key": "maxAlarmRate",
+              "value": "0.01",
+              "description": "Extremely strict (1%)"
+            },
+            {
+              "key": "maxTransitStops",
+              "value": "0",
+              "description": "Direct only"
+            }
+          ]
+        },
+        "description": "Test case: No routes satisfy constraints\n\nExpected Result:\n- Status: 404 Not Found\n- Error: NO_ROUTES_FOUND\n- Message: No routes found from VNSGN to USNYC with given constraints"
+      },
+      "response": []
+    }
+  ]
+}

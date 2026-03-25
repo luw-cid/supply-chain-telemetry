@@ -196,6 +196,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
   let rows;
   try {
     rows = await custodyRepository.fetchOwnershipHistory(String(shipmentId).trim(), level);
+
   } catch (spError) {
     // SP dùng SIGNAL SQLSTATE '45000' khi shipment không tồn tại
     const msg = spError.message || '';
@@ -267,7 +268,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
   return {
     shipmentId: String(shipmentId).trim(),
     detailLevel: level,
-    totalTransfers: chain.length > 0 ? rows[0].total_transfers_in_chain ?? chain.length : 0,
+    totalTransfers: chain.length,
     chain,
   };
 }

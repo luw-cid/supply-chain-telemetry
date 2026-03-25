@@ -1,0 +1,210 @@
+{
+  "info": {
+    "name": "Trace Route API",
+    "description": "API collection for testing Trace Route endpoint (API 5.1)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Happy Path - Valid Shipment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH001",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH001"]
+        },
+        "description": "Test với shipment ID hợp lệ có telemetry data"
+      },
+      "response": []
+    },
+    {
+      "name": "2. With maxPoints Parameter (100)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH001?maxPoints=100",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH001"],
+          "query": [
+            {
+              "key": "maxPoints",
+              "value": "100",
+              "description": "Giới hạn số điểm trả về"
+            }
+          ]
+        },
+        "description": "Test downsampling với maxPoints = 100"
+      },
+      "response": []
+    },
+    {
+      "name": "3. With maxPoints Parameter (500)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH001?maxPoints=500",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH001"],
+          "query": [
+            {
+              "key": "maxPoints",
+              "value": "500"
+            }
+          ]
+        },
+        "description": "Test downsampling với maxPoints = 500"
+      },
+      "response": []
+    },
+    {
+      "name": "4. With maxPoints Parameter (2000)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH001?maxPoints=2000",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH001"],
+          "query": [
+            {
+              "key": "maxPoints",
+              "value": "2000"
+            }
+          ]
+        },
+        "description": "Test với large maxPoints"
+      },
+      "response": []
+    },
+    {
+      "name": "5. Error - Non-existent Shipment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/INVALID_SHIPMENT",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "INVALID_SHIPMENT"]
+        },
+        "description": "Test với shipment ID không tồn tại - expect 404"
+      },
+      "response": []
+    },
+    {
+      "name": "6. Error - Empty Shipment ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", ""]
+        },
+        "description": "Test với empty shipment ID - expect 404 (route not found)"
+      },
+      "response": []
+    },
+    {
+      "name": "7. Error - Invalid maxPoints (too large)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH001?maxPoints=99999",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH001"],
+          "query": [
+            {
+              "key": "maxPoints",
+              "value": "99999",
+              "description": "Vượt quá giới hạn 10000"
+            }
+          ]
+        },
+        "description": "Test với maxPoints > 10000 - expect 400"
+      },
+      "response": []
+    },
+    {
+      "name": "8. Error - Invalid maxPoints (negative)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH001?maxPoints=-100",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH001"],
+          "query": [
+            {
+              "key": "maxPoints",
+              "value": "-100",
+              "description": "Giá trị âm"
+            }
+          ]
+        },
+        "description": "Test với maxPoints < 1 - expect 400"
+      },
+      "response": []
+    },
+    {
+      "name": "9. Error - Invalid maxPoints (not a number)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH001?maxPoints=abc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH001"],
+          "query": [
+            {
+              "key": "maxPoints",
+              "value": "abc",
+              "description": "Không phải số"
+            }
+          ]
+        },
+        "description": "Test với maxPoints không phải số - expect 400"
+      },
+      "response": []
+    },
+    {
+      "name": "10. Multiple Shipments - SH002",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH002",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH002"]
+        },
+        "description": "Test với shipment khác"
+      },
+      "response": []
+    },
+    {
+      "name": "11. Multiple Shipments - SH003",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/analytics/trace-route/SH003",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "analytics", "trace-route", "SH003"]
+        },
+        "description": "Test với shipment khác"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}
