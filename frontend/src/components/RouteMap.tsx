@@ -3,6 +3,18 @@ import mapboxgl from 'mapbox-gl'
 import type { Shipment, TelemetryPoint } from '../types'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
+const fallbackStyle: mapboxgl.StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1220' } }],
+}
+
+function mapTilerStyleUrl(apiKey: string, mapId: string): string {
+  const key = encodeURIComponent(apiKey)
+  const id = encodeURIComponent(mapId)
+  return `https://api.maptiler.com/maps/${id}/style.json?key=${key}`
+}
+
 interface RouteMapProps {
   shipment: Shipment
   currentPoint: TelemetryPoint
@@ -18,6 +30,8 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
+  const currentPointRef = useRef(currentPoint)
+  currentPointRef.current = currentPoint
 
   const routeCoordinates = useMemo(
     () => shipment.routePoints.map((point) => [point.lng, point.lat] as [number, number]),
@@ -29,21 +43,21 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
       return
     }
 
-    const token = (import.meta as ImportMeta).env?.VITE_MAPBOX_TOKEN ?? ''
-    if (token) {
-      mapboxgl.accessToken = token
+    const apiKey = import.meta.env.VITE_MAPTILER_API_KEY?.trim() ?? ''
+    const mapId = import.meta.env.VITE_MAPTILER_MAP_ID?.trim() || 'streets-v2'
+    const useMapTiler = Boolean(apiKey)
+
+    // MapTiler + Mapbox GL: use MapTiler key as accessToken (see MapTiler docs).
+    if (useMapTiler) {
+      mapboxgl.accessToken = apiKey
     }
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: {
-        version: 8,
-        sources: {},
-        layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1220' } }],
-      },
+      style: useMapTiler ? mapTilerStyleUrl(apiKey, mapId) : fallbackStyle,
       center: routeCoordinates[0],
       zoom: 3,
-      attributionControl: false,
+      attributionControl: useMapTiler,
     })
 
     mapRef.current = map
@@ -64,16 +78,17 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-          'line-color': '#38bdf8',
+          'line-color': '#0284c7',
           'line-width': 4,
-          'line-opacity': 0.88,
+          'line-opacity': 0.92,
         },
       })
 
+      const pt = currentPointRef.current
       const markerEl = document.createElement('div')
-      markerEl.className = 'map-marker'
+      markerEl.className = `map-marker ${markerClassByStatus[pt.status]}`
       markerRef.current = new mapboxgl.Marker({ element: markerEl })
-        .setLngLat([currentPoint.lng, currentPoint.lat])
+        .setLngLat([pt.lng, pt.lat])
         .addTo(map)
 
       const bounds = routeCoordinates.reduce(
@@ -85,10 +100,12 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
 
     return () => {
       markerRef.current?.remove()
+      markerRef.current = null
       map.remove()
       mapRef.current = null
     }
-  }, [routeCoordinates, currentPoint.lat, currentPoint.lng])
+    // Only recreate when the route geometry changes (e.g. other shipment). Not on simulation ticks / marker moves.
+  }, [routeCoordinates])
 
   useEffect(() => {
     if (!mapRef.current) {
@@ -133,7 +150,9 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
     <div className="relative h-full min-h-[480px] w-full overflow-hidden rounded-md border border-slate-800">
       <div ref={mapContainerRef} className="h-full w-full" />
       <div className="pointer-events-none absolute bottom-3 right-3 rounded bg-slate-950/85 px-3 py-1 text-xs text-slate-300">
-        Mapbox GL route simulation
+        {import.meta.env.VITE_MAPTILER_API_KEY?.trim()
+          ? 'MapTiler · route simulation'
+          : 'Mapbox GL · route simulation (add VITE_MAPTILER_API_KEY)'}
       </div>
     </div>
   )

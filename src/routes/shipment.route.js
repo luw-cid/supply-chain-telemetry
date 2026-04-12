@@ -1,17 +1,19 @@
 const express = require('express');
 const {
+	listShipmentsController,
 	createShipmentController,
 	getShipmentDetailsController,
 } = require('../controllers/shipment.controller');
 const {
 	getTelemetryLogsController,
 } = require('../controllers/telemetry.controller');
-const { authenticate } = require('../middlewares/auth.middleware');
+const { authenticate, authorizeRoles } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
-router.post('/', createShipmentController);
-router.get('/:id', getShipmentDetailsController);
+router.get('/', authenticate, listShipmentsController);
+router.post('/', authenticate, authorizeRoles('ADMIN'), createShipmentController);
+router.get('/:id', authenticate, getShipmentDetailsController);
 
 // GET /api/v1/shipments/:id/telemetry/logs
 router.get('/:id/telemetry/logs', authenticate, getTelemetryLogsController);

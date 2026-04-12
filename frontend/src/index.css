@@ -7,7 +7,7 @@
 :root {
   font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
   color: #e2e8f0;
-  background-color: #020617;
+  background-color: #030712;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -19,20 +19,20 @@ body,
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 15% -5%, rgba(56, 189, 248, 0.11), transparent 26%),
-    radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.08), transparent 22%),
-    #020617;
+    radial-gradient(circle at 15% -5%, rgba(56, 189, 248, 0.05), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.04), transparent 24%),
+    #030712;
 }
 
 .dashboard-card {
-  background: rgba(15, 23, 42, 0.72) !important;
+  background: rgba(8, 12, 22, 0.92) !important;
   border: 1px solid #1e293b !important;
-  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.06);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.04);
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .dashboard-card:hover {
-  border-color: #334155 !important;
+  border-color: #2d3b52 !important;
 }
 
 .app-tabs .ant-tabs-tab {
@@ -49,11 +49,11 @@ body,
 }
 
 .ant-table {
-  background: rgba(15, 23, 42, 0.35) !important;
+  background: rgba(5, 8, 16, 0.55) !important;
 }
 
 .ant-table-thead > tr > th {
-  background: rgba(15, 23, 42, 0.72) !important;
+  background: rgba(8, 12, 22, 0.95) !important;
   color: #94a3b8 !important;
   border-bottom: 1px solid #1e293b !important;
 }
@@ -63,7 +63,7 @@ body,
 }
 
 .ant-table-tbody > tr:hover > td {
-  background: rgba(30, 41, 59, 0.45) !important;
+  background: rgba(15, 23, 42, 0.55) !important;
 }
 
 .map-marker {
@@ -92,6 +92,52 @@ body,
   background: #ef4444;
 }
 
+@keyframes map-alarm-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    opacity: 0.92;
+  }
+}
+
+.map-marker-alarm-pulse {
+  animation: map-alarm-pulse 1.2s ease-in-out infinite;
+}
+
+/* Port markers: SVG kho + bến (inject từ GlobalFleetMap), kích thước lớn */
+.map-marker-port {
+  width: 56px;
+  height: 56px;
+  line-height: 0;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
+}
+
+.map-marker-port svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.map-marker-port:hover {
+  transform: scale(1.12);
+  filter: drop-shadow(0 6px 14px rgba(14, 165, 233, 0.55));
+}
+
+.ant-collapse-borderless > .ant-collapse-item {
+  border-bottom: 1px solid #1e293b;
+}
+
+.ant-collapse-borderless > .ant-collapse-item:last-child {
+  border-bottom: none;
+}
+
 .page-enter {
   animation: page-enter 320ms ease-out;
 }
@@ -105,4 +151,76 @@ body,
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Light theme: match ThemeContext data-theme="light" */
+html[data-theme='light'] {
+  color: #0f172a;
+  background-color: #f1f5f9;
+}
+
+html[data-theme='light'] body,
+html[data-theme='light'] #root {
+  background:
+    radial-gradient(circle at 15% -5%, rgba(56, 189, 248, 0.12), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.08), transparent 24%),
+    #f1f5f9;
+}
+
+html[data-theme='light'] .dashboard-card {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme='light'] .dashboard-card:hover {
+  border-color: #cbd5e1 !important;
+}
+
+html[data-theme='light'] .app-tabs .ant-tabs-tab {
+  color: #64748b;
+}
+
+html[data-theme='light'] .app-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #0f172a;
+}
+
+html[data-theme='light'] .app-descriptions .ant-descriptions-item-label,
+html[data-theme='light'] .app-descriptions .ant-descriptions-item-content {
+  color: #334155 !important;
+}
+
+html[data-theme='light'] .ant-table {
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+html[data-theme='light'] .ant-table-thead > tr > th {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html[data-theme='light'] .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html[data-theme='light'] .ant-table-tbody > tr:hover > td {
+  background: #f1f5f9 !important;
+}
+
+html[data-theme='light'] .map-marker {
+  border: 2px solid #f8fafc;
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.45);
+}
+
+html[data-theme='light'] .map-marker-port {
+  filter: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.25));
+}
+
+html[data-theme='light'] .map-marker-port:hover {
+  filter: drop-shadow(0 5px 12px rgba(2, 132, 199, 0.45));
+}
+
+html[data-theme='light'] .ant-collapse-borderless > .ant-collapse-item {
+  border-bottom: 1px solid #e2e8f0;
 }

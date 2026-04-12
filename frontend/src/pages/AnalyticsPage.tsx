@@ -2,8 +2,10 @@ import { Card, Col, Row, Typography } from 'antd'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useMemo } from 'react'
 import { useTelemetryStore } from '../store/useTelemetryStore'
+import { useThemeMode } from '../contexts/ThemeContext'
 
 export default function AnalyticsPage() {
+  const { isDark } = useThemeMode()
   const shipments = useTelemetryStore((state) => state.shipments)
 
   const averageTransport = useMemo(() => {
@@ -29,25 +31,42 @@ export default function AnalyticsPage() {
     }))
   }, [shipments])
 
+  const gridStroke = isDark ? '#1f2937' : '#e2e8f0'
+  const axisStroke = isDark ? '#64748b' : '#94a3b8'
+  const tickFill = isDark ? '#94a3b8' : '#475569'
+  const tooltipStyle = isDark
+    ? {
+        border: '1px solid #334155',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        borderRadius: 6,
+      }
+    : {
+        border: '1px solid #e2e8f0',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: 6,
+      }
+
   const chartCard = (title: string, data: Array<{ name: string; value: number }>, color: string) => (
     <Card className="dashboard-card h-full" bodyStyle={{ padding: 16 }}>
-      <Typography.Title level={5} className="!text-slate-100">
+      <Typography.Title level={5} className={isDark ? '!text-slate-100' : '!text-slate-900'}>
         {title}
       </Typography.Title>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 28 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-            <XAxis dataKey="name" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} angle={-14} textAnchor="end" interval={0} />
-            <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-            <Tooltip
-              contentStyle={{
-                border: '1px solid #334155',
-                background: '#0f172a',
-                color: '#e2e8f0',
-                borderRadius: 6,
-              }}
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis
+              dataKey="name"
+              stroke={axisStroke}
+              tick={{ fill: tickFill, fontSize: 11 }}
+              angle={-14}
+              textAnchor="end"
+              interval={0}
             />
+            <YAxis stroke={axisStroke} tick={{ fill: tickFill, fontSize: 11 }} />
+            <Tooltip contentStyle={tooltipStyle} />
             <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>

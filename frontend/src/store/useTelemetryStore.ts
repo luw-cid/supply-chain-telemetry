@@ -10,6 +10,7 @@ interface TelemetryState {
   setSelectedShipment: (shipmentId: string) => void
   advanceSimulation: () => void
   startSimulation: () => void
+  addShipment: (shipment: Shipment) => boolean
 }
 
 const initialCursor = shipmentMocks.reduce<Record<string, number>>((acc, shipment) => {
@@ -44,6 +45,18 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
     window.setInterval(() => {
       get().advanceSimulation()
     }, 4500)
+  },
+  addShipment: (shipment) => {
+    const { shipments } = get()
+    if (shipments.some((s) => s.id === shipment.id)) {
+      return false
+    }
+    set((state) => ({
+      shipments: [...state.shipments, shipment],
+      cursorByShipmentId: { ...state.cursorByShipmentId, [shipment.id]: 0 },
+      selectedShipmentId: shipment.id,
+    }))
+    return true
   },
 }))
 

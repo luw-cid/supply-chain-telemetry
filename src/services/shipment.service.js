@@ -95,7 +95,7 @@ async function createShipment(payload) {
   };
 }
 
-async function getShipmentDetails(shipmentId) {
+async function getShipmentDetails(shipmentId, access = {}) {
   if (!shipmentId) {
     throw AppError.badRequest('Shipment id is required');
   }
@@ -103,6 +103,16 @@ async function getShipmentDetails(shipmentId) {
   const shipment = await shipmentRepository.findShipmentDetailsById(shipmentId);
   if (!shipment) {
     throw AppError.notFound(`Shipment ${shipmentId} not found`);
+  }
+
+  const { role, partyId } = access;
+  if (role === 'OWNER') {
+    if (!partyId) {
+      throw AppError.forbidden('Tài khoản OWNER cần được gán PartyID để xem lô hàng');
+    }
+    if (shipment.ShipperPartyID !== partyId && shipment.ConsigneePartyID !== partyId) {
+      throw AppError.forbidden('Bạn không có quyền xem lô hàng này');
+    }
   }
 
   const routeDoc = await shipmentRepository.findShipmentRouteById(shipmentId);
@@ -113,7 +123,29 @@ async function getShipmentDetails(shipmentId) {
   };
 }
 
+async function listShipments(query = {}, access = {}) {
+  const { role, partyId } = access;
+  let partyScopeId;
+  if (role === 'OWNER') {
+    if (!partyId) {
+      const page = Math.max(parseInt(String(query.page), 10) || 1, 1);
+      const limit = Math.min(Math.max(parseInt(String(query.limit), 10) || 20, 1), 100);
+      return { items: [], total: 0, page, limit };
+    }
+    partyScopeId = partyId;
+  }
+
+  return shipmentRepository.listShipmentsWithDisplay({
+    status: query.status,
+    search: query.search,
+    page: query.page,
+    limit: query.limit,
+    partyScopeId,
+  });
+}
+
 module.exports = {
   createShipment,
   getShipmentDetails,
+  listShipments,
 };

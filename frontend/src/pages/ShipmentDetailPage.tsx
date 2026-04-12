@@ -1,106 +1,151 @@
-import { Card, Col, Descriptions, Row, Space, Table, Tabs, Typography } from 'antd'
-import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Alert, Card, Descriptions, Pagination, Space, Tabs, Typography } from 'antd'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { getOwnershipHistory } from '../api/custody'
+import { getShipment } from '../api/shipments'
+import { getTelemetryLogs, getTraceRoute } from '../api/telemetry'
 import CustodyTimeline from '../components/CustodyTimeline'
-import StatusBadge from '../components/StatusBadge'
-import TemperatureChart from '../components/TemperatureChart'
-import {
-  getCurrentTelemetryPoint,
-  getTelemetryUntilCursor,
-  selectShipmentById,
-  useTelemetryStore,
-} from '../store/useTelemetryStore'
+import ShipmentStatusBadge from '../components/ShipmentStatusBadge'
+import TelemetryIoTChart from '../components/TelemetryIoTChart'
+import TraceRouteMap from '../components/TraceRouteMap'
+import { useThemeMode } from '../contexts/ThemeContext'
+import { mapOwnershipChainToEvents } from '../utils/ownershipTimeline'
 
 export default function ShipmentDetailPage() {
-  const { shipmentId } = useParams()
-  const shipments = useTelemetryStore((state) => state.shipments)
-  const cursorByShipmentId = useTelemetryStore((state) => state.cursorByShipmentId)
+  const { isDark } = useThemeMode()
+  const { shipmentId = '' } = useParams()
+  const [telPage, setTelPage] = useState(1)
+  const [telLimit] = useState(100)
 
-  const shipment = useMemo(
-    () => selectShipmentById(shipments, shipmentId ?? '') ?? shipments[0],
-    [shipmentId, shipments],
-  )
+  const detailQ = useQuery({
+    queryKey: ['shipment', shipmentId],
+    queryFn: () => getShipment(shipmentId),
+    enabled: Boolean(shipmentId),
+  })
 
-  if (!shipment) {
-    return null
+  const traceQ = useQuery({
+    queryKey: ['trace', shipmentId],
+    queryFn: () => getTraceRoute(shipmentId, 800),
+    enabled: Boolean(shipmentId),
+    retry: false,
+  })
+
+  const telQ = useQuery({
+    queryKey: ['telemetry', shipmentId, telPage, telLimit],
+    queryFn: () => getTelemetryLogs(shipmentId, { page: telPage, limit: telLimit, sort: 'asc' }),
+    enabled: Boolean(shipmentId),
+    retry: false,
+  })
+
+  const custodyQ = useQuery({
+    queryKey: ['custody', shipmentId],
+    queryFn: () => getOwnershipHistory(shipmentId, 'DETAILED'),
+    enabled: Boolean(shipmentId),
+    retry: false,
+  })
+
+  const shipment = detailQ.data?.shipment as Record<string, unknown> | undefined
+  const status = String(shipment?.Status ?? '')
+  const tempMin = shipment?.TempMin != null ? Number(shipment.TempMin) : null
+  const tempMax = shipment?.TempMax != null ? Number(shipment.TempMax) : null
+
+  const custodyEvents = useMemo(() => {
+    const chain = (custodyQ.data?.chain ?? []) as Record<string, unknown>[]
+    return mapOwnershipChainToEvents(chain)
+  }, [custodyQ.data])
+
+  if (!shipmentId) return null
+
+  const labelCls = isDark ? '!text-slate-400' : '!text-slate-600'
+  const headingCls = isDark ? '!m-0 !text-slate-100' : '!m-0 !text-slate-900'
+  const traceLoadingCls = isDark ? 'text-slate-500' : 'text-slate-600'
+
+  if (detailQ.isError) {
+    return (
+      <Alert
+        type="error"
+        message="Không tải được chi tiết lô hàng"
+        description={(detailQ.error as Error)?.message}
+      />
+    )
   }
-
-  const currentPoint = getCurrentTelemetryPoint(shipment, cursorByShipmentId)
-  const historyPoints = getTelemetryUntilCursor(shipment, cursorByShipmentId)
 
   return (
     <Space direction="vertical" size={16} className="w-full">
-      <Card className="dashboard-card" bodyStyle={{ padding: 16 }}>
+      <Card className="dashboard-card" bodyStyle={{ padding: 16 }} loading={detailQ.isLoading}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Typography.Text className="!text-slate-400">Shipment ID</Typography.Text>
-            <Typography.Title level={3} className="!m-0 !text-slate-100">
-              {shipment.id}
+            <Typography.Text className={labelCls}>Shipment ID</Typography.Text>
+            <Typography.Title level={3} className={headingCls}>
+              {String(shipment?.ShipmentID ?? shipmentId)}
             </Typography.Title>
           </div>
-          <StatusBadge status={currentPoint.status} />
+          <ShipmentStatusBadge status={status} />
         </div>
+        {shipment && (
+          <Descriptions column={1} className="app-descriptions mt-4">
+            <Descriptions.Item label="Cảng đi">{String(shipment.OriginPortCode)}</Descriptions.Item>
+            <Descriptions.Item label="Cảng đến">{String(shipment.DestinationPortCode)}</Descriptions.Item>
+            <Descriptions.Item label="Trọng lượng">{String(shipment.WeightKg)} kg</Descriptions.Item>
+            <Descriptions.Item label="CargoProfile">{String(shipment.CargoProfileID)}</Descriptions.Item>
+          </Descriptions>
+        )}
       </Card>
 
       <Tabs
-        defaultActiveKey="overview"
+        defaultActiveKey="trace"
         className="app-tabs"
         items={[
           {
-            key: 'overview',
-            label: 'Overview',
+            key: 'trace',
+            label: 'Hành trình (Trace)',
             children: (
               <Card className="dashboard-card">
-                <Row gutter={16}>
-                  <Col span={24}>
-                    <Descriptions column={1} className="app-descriptions">
-                      <Descriptions.Item label="Current port">{currentPoint.locationLabel}</Descriptions.Item>
-                      <Descriptions.Item label="Current owner">{shipment.currentOwner}</Descriptions.Item>
-                      <Descriptions.Item label="Status">{currentPoint.status}</Descriptions.Item>
-                    </Descriptions>
-                  </Col>
-                </Row>
+                {traceQ.isLoading && <Typography.Text className={traceLoadingCls}>Đang tải trace…</Typography.Text>}
+                {traceQ.isError && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    className="mb-3"
+                    message="Chưa có dữ liệu trace hoặc lỗi API"
+                    description={(traceQ.error as Error)?.message}
+                  />
+                )}
+                {traceQ.data && <TraceRouteMap trace={traceQ.data} />}
               </Card>
             ),
           },
           {
             key: 'telemetry',
-            label: 'Telemetry',
+            label: 'Cảm biến (Telemetry)',
             children: (
               <Card className="dashboard-card">
-                <TemperatureChart points={historyPoints} />
+                {telQ.isError && (
+                  <Alert type="error" message="Không đọc được telemetry logs (cần JWT / dữ liệu)." className="mb-3" />
+                )}
+                <TelemetryIoTChart logs={telQ.data?.logs ?? []} tempMin={tempMin} tempMax={tempMax} />
+                <div className="mt-4 flex justify-end">
+                  <Pagination
+                    current={telPage}
+                    pageSize={telLimit}
+                    total={telQ.data?.pagination.total ?? 0}
+                    onChange={(p) => setTelPage(p)}
+                    showSizeChanger={false}
+                  />
+                </div>
               </Card>
             ),
           },
           {
             key: 'custody',
-            label: 'Custody',
+            label: 'Chuỗi sở hữu',
             children: (
               <Card className="dashboard-card">
-                <CustodyTimeline items={shipment.custodyChain} />
-              </Card>
-            ),
-          },
-          {
-            key: 'history',
-            label: 'History',
-            children: (
-              <Card className="dashboard-card" bodyStyle={{ padding: 0 }}>
-                <Table
-                  pagination={false}
-                  dataSource={shipment.historyEvents}
-                  columns={[
-                    { title: 'Event', dataIndex: 'event', key: 'event' },
-                    {
-                      title: 'Time',
-                      dataIndex: 'time',
-                      key: 'time',
-                      render: (value: string) => new Date(value).toLocaleString(),
-                    },
-                    { title: 'Location', dataIndex: 'location', key: 'location' },
-                    { title: 'Actor', dataIndex: 'actor', key: 'actor' },
-                  ]}
-                />
+                {custodyQ.isError && (
+                  <Alert type="warning" message="Không tải ownership-history (kiểm tra quyền JWT)." className="mb-3" />
+                )}
+                <CustodyTimeline items={custodyEvents} />
               </Card>
             ),
           },

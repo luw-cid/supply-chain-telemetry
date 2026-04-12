@@ -146,6 +146,78 @@ async function findShipmentRouteById(shipmentId) {
     .lean();
 }
 
+/**
+ * @param {{ status?: string, search?: string, page?: number, limit?: number, partyScopeId?: string }} opts
+ */
+async function listShipmentsWithDisplay(opts = {}) {
+  const page = Math.max(parseInt(String(opts.page), 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(String(opts.limit), 10) || 20, 1), 100);
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+  const params = [];
+
+  if (opts.status) {
+    conditions.push('s.Status = ?');
+    params.push(String(opts.status).toUpperCase());
+  }
+  if (opts.search && String(opts.search).trim()) {
+    conditions.push('s.ShipmentID LIKE ?');
+    params.push(`%${String(opts.search).trim()}%`);
+  }
+  if (opts.partyScopeId && String(opts.partyScopeId).trim()) {
+    conditions.push('(s.ShipperPartyID = ? OR s.ConsigneePartyID = ?)');
+    params.push(String(opts.partyScopeId).trim(), String(opts.partyScopeId).trim());
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const [countRows] = await pool.query(
+    `SELECT COUNT(*) AS total FROM Shipments s ${where}`,
+    params
+  );
+  const total = countRows[0]?.total ?? 0;
+
+  const [rows] = await pool.query(
+    `SELECT
+      s.ShipmentID,
+      s.Status,
+      s.WeightKg,
+      s.OriginPortCode,
+      s.DestinationPortCode,
+      s.CurrentPortCode,
+      s.CurrentLocation,
+      s.LastTelemetryAtUTC,
+      s.AlarmAtUTC,
+      s.AlarmReason,
+      sp.Name AS ShipperName,
+      cn.Name AS ConsigneeName,
+      po.Name AS OriginPortName,
+      pd.Name AS DestinationPortName,
+      COALESCE(pc.Latitude, po.Latitude) AS MarkerLat,
+      COALESCE(pc.Longitude, po.Longitude) AS MarkerLng
+    FROM Shipments s
+    INNER JOIN Parties sp ON sp.PartyID = s.ShipperPartyID
+    INNER JOIN Parties cn ON cn.PartyID = s.ConsigneePartyID
+    INNER JOIN Ports po ON po.PortCode = s.OriginPortCode
+    INNER JOIN Ports pd ON pd.PortCode = s.DestinationPortCode
+    LEFT JOIN Ports pc ON pc.PortCode = s.CurrentPortCode
+    ${where}
+    ORDER BY s.UpdatedAtUTC DESC
+    LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  );
+
+  return { items: rows, total, page, limit };
+}
+
+async function listCargoProfilesForSelect() {
+  const [rows] = await pool.query(
+    `SELECT CargoProfileID, CargoType, CargoName, TempMin, TempMax FROM CargoProfiles ORDER BY CargoName`
+  );
+  return rows;
+}
+
 module.exports = {
   findShipmentById,
   findCargoProfileById,
@@ -155,4 +227,6 @@ module.exports = {
   createShipmentRoute,
   findShipmentDetailsById,
   findShipmentRouteById,
+  listShipmentsWithDisplay,
+  listCargoProfilesForSelect,
 };
