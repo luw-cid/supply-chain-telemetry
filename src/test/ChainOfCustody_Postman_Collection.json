@@ -1,0 +1,1188 @@
+{
+  "info": {
+    "name": "Chain of Custody API — Full Test Scenarios",
+    "description": "Bộ kịch bản test đầy đủ cho Nhóm API Chuỗi Sở Hữu (Chain of Custody)\n\nEndpoints:\n  POST /api/v1/shipments/:id/transfer\n  GET  /api/v1/shipments/:id/ownership-history\n\nHướng dẫn:\n1. Import collection này vào Postman\n2. Import environment 'CoC_Local.postman_environment.json'\n3. Chạy request 'AUTH — Đăng nhập' trước để auto-lưu token\n4. Chạy các kịch bản theo thứ tự",
+    "_postman_id": "custody-api-v1-2026",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "shipmentOk",
+      "value": "SHP-TRANSFER-OK",
+      "type": "string"
+    },
+    {
+      "key": "shipmentAlarm",
+      "value": "SHP-ALARM-001",
+      "type": "string"
+    },
+    {
+      "key": "shipmentHistory",
+      "value": "SHP-HISTORY-001",
+      "type": "string"
+    },
+    {
+      "key": "partyOwner",
+      "value": "PARTY-LOG-001",
+      "type": "string"
+    },
+    {
+      "key": "partyReceiver",
+      "value": "PARTY-LOG-002",
+      "type": "string"
+    },
+    {
+      "key": "partyWrong",
+      "value": "PARTY-OWNER-001",
+      "type": "string"
+    },
+    {
+      "key": "partyAuditor",
+      "value": "PARTY-AUD-001",
+      "type": "string"
+    },
+    {
+      "key": "portSGN",
+      "value": "VNSGN",
+      "type": "string"
+    },
+    {
+      "key": "portSIN",
+      "value": "SGSIN",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 AUTH",
+      "item": [
+        {
+          "name": "AUTH — Đăng nhập lấy JWT token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  const token = body?.data?.accessToken;",
+                  "  if (token) {",
+                  "    pm.collectionVariables.set('token', token);",
+                  "    pm.test('✅ Login thành công — token đã lưu', () => pm.expect(token).to.be.a('string'));",
+                  "  }",
+                  "} else {",
+                  "  pm.test('❌ Login thất bại — kiểm tra seed data và JWT_SECRET trong .env', () => pm.expect(pm.response.code).to.equal(200));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@custody.vn\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚫 1. Authentication Guard",
+      "item": [
+        {
+          "name": "1.1 Không có token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.expect(pm.response.code).to.equal(401));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.2 Token sai định dạng → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Invalid Token', () => pm.expect(pm.response.code).to.equal(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer this.is.not.a.valid.jwt.token"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.3 GET History không có token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.expect(pm.response.code).to.equal(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentHistory}}/ownership-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentHistory}}",
+                "ownership-history"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ 2. Validation — Transfer (400)",
+      "item": [
+        {
+          "name": "2.1 Thiếu fromPartyId → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.expect(pm.response.code).to.equal(400));",
+                  "pm.test('error đề cập fromPartyId', () => pm.expect(pm.response.json().error).to.match(/fromPartyId/i));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2 Thiếu toPartyId → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.expect(pm.response.code).to.equal(400));",
+                  "pm.test('error đề cập toPartyId', () => pm.expect(pm.response.json().error).to.match(/toPartyId/i));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"handoverPortCode\": \"{{portSGN}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.3 Thiếu handoverPortCode → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.expect(pm.response.code).to.equal(400));",
+                  "pm.test('error đề cập handoverPortCode', () => pm.expect(pm.response.json().error).to.match(/handoverPortCode/i));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.4 handoverCondition sai enum → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.expect(pm.response.code).to.equal(400));",
+                  "pm.test('error đề cập GOOD/DAMAGED/PARTIAL', () => pm.expect(pm.response.json().error).to.match(/GOOD|DAMAGED|PARTIAL/i));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\",\n  \"handoverCondition\": \"BROKEN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.5 fromPartyId = toPartyId (cùng party) → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 — không tự chuyển cho mình', () => pm.expect(pm.response.code).to.equal(400));",
+                  "pm.test('error đề cập different', () => pm.expect(pm.response.json().error).to.match(/different/i));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyOwner}}\",\n  \"handoverPortCode\": \"{{portSGN}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.6 Request body hoàn toàn rỗng → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.expect(pm.response.code).to.equal(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 3. Business Rules — Transfer",
+      "item": [
+        {
+          "name": "3.1 Shipment không tồn tại → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.expect(pm.response.code).to.equal(404));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/SHP-DOES-NOT-EXIST/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "SHP-DOES-NOT-EXIST",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Shipment đang ALARM → 409 Conflict ⚠",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict — bị chặn do ALARM', () => pm.expect(pm.response.code).to.equal(409));",
+                  "pm.test('error đề cập ALARM', () => pm.expect(pm.response.json().error).to.match(/ALARM/i));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\",\n  \"handoverNotes\": \"Cố chuyển lô hàng ALARM — phải bị chặn\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentAlarm}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentAlarm}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3 fromPartyId không phải owner hiện tại → 403 Forbidden 🚫",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', () => pm.expect(pm.response.code).to.equal(403));",
+                  "pm.test('error đề cập owner/authorized', () => pm.expect(pm.response.json().error).to.match(/owner|authorized/i));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyWrong}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\",\n  \"handoverNotes\": \"PARTY-OWNER-001 không phải chủ sở hữu SHP-TRANSFER-OK — phải bị từ chối\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.4 Happy Path — Transfer tối thiểu (chỉ fields bắt buộc) → 200 ✅",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const code = pm.response.code;",
+                  "pm.test('Status 200 OK hoặc 403 (nếu đã transfer trước đó)', () => pm.expect([200, 403]).to.include(code));",
+                  "if (code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "  pm.test('data.shipmentId đúng', () => pm.expect(data.shipmentId).to.equal(pm.collectionVariables.get('shipmentOk')));",
+                  "  pm.test('data.fromPartyId đúng', () => pm.expect(data.fromPartyId).to.equal(pm.collectionVariables.get('partyOwner')));",
+                  "  pm.test('data.transferredAtUTC là string ISO', () => pm.expect(data.transferredAtUTC).to.be.a('string'));",
+                  "  pm.collectionVariables.set('lastTransferStatus', '200');",
+                  "} else {",
+                  "  pm.collectionVariables.set('lastTransferStatus', '403');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\",\n  \"handoverCondition\": \"GOOD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.5 Happy Path — Transfer đầy đủ optional fields → 200 ✅",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const code = pm.response.code;",
+                  "pm.test('Status 200 OK hoặc 403 (nếu owner đã thay đổi)', () => pm.expect([200, 403]).to.include(code));",
+                  "if (code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.test('handoverCondition = DAMAGED', () => pm.expect(data.handoverCondition).to.equal('DAMAGED'));",
+                  "  pm.test('handoverPortCode = SGSIN', () => pm.expect(data.handoverPortCode).to.equal('SGSIN'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyReceiver}}\",\n  \"toPartyId\": \"{{partyOwner}}\",\n  \"handoverPortCode\": \"{{portSIN}}\",\n  \"handoverCondition\": \"DAMAGED\",\n  \"handoverNotes\": \"Phát hiện 3 thùng bị móp trong quá trình vận chuyển. Kiểm tra tại cảng Singapore lúc 10:30 ngày 18/03/2026.\",\n  \"handoverSignature\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n  \"witnessPartyId\": \"{{partyAuditor}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.6 Transfer với handoverCondition = PARTIAL → 200 ✅",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 hoặc 403', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromPartyId\": \"{{partyOwner}}\",\n  \"toPartyId\": \"{{partyReceiver}}\",\n  \"handoverPortCode\": \"{{portSGN}}\",\n  \"handoverCondition\": \"PARTIAL\",\n  \"handoverNotes\": \"Giao thiếu: Chỉ nhận được 48/50 kiện theo vận đơn BL-2026-0318. Phần thiếu đang điều tra.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentOk}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentOk}}",
+                "transfer"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📜 4. Ownership History — DETAILED",
+      "item": [
+        {
+          "name": "4.1 Mặc định (không truyền ?detail) → DETAILED → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('detailLevel = DETAILED', () => pm.expect(data.detailLevel).to.equal('DETAILED'));",
+                  "pm.test('chain là array', () => pm.expect(data.chain).to.be.an('array'));",
+                  "pm.test('shipmentId đúng', () => pm.expect(data.shipmentId).to.equal(pm.collectionVariables.get('shipmentHistory')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentHistory}}/ownership-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentHistory}}",
+                "ownership-history"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.2 ?detail=DETAILED — kiểm tra cấu trúc đầy đủ → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Có ít nhất 3 bước (seed data)', () => pm.expect(data.chain.length).to.be.at.least(3));",
+                  "pm.test('totalTransfers khớp chain.length', () => pm.expect(data.totalTransfers).to.equal(data.chain.length));",
+                  "if (data.chain.length > 0) {",
+                  "  const first = data.chain[0];",
+                  "  pm.test('Bước đầu: previousOwner = null', () => pm.expect(first.previousOwner).to.be.null);",
+                  "  pm.test('Bước đầu: stepNumber = 1', () => pm.expect(first.stepNumber).to.equal(1));",
+                  "  pm.test('currentOwner có name + type', () => pm.expect(first.currentOwner).to.have.property('name'));",
+                  "  pm.test('handoverPort có code + country', () => pm.expect(first.handoverPort).to.have.property('code'));",
+                  "  const last = data.chain[data.chain.length - 1];",
+                  "  pm.test('Bước cuối: ownershipStatus = ACTIVE', () => pm.expect(last.ownershipStatus).to.equal('ACTIVE'));",
+                  "  pm.test('Bước cuối: endAtUTC = null', () => pm.expect(last.endAtUTC).to.be.null);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentHistory}}/ownership-history?detail=DETAILED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentHistory}}",
+                "ownership-history"
+              ],
+              "query": [
+                {
+                  "key": "detail",
+                  "value": "DETAILED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.3 Kiểm tra Data Integrity — chuỗi không khoảng trống",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const chain = pm.response.json().data.chain;",
+                  "pm.test('Tất cả bước trừ cuối: TRANSFERRED + endAtUTC ≠ null', () => {",
+                  "  for (let i = 0; i < chain.length - 1; i++) {",
+                  "    pm.expect(chain[i].ownershipStatus).to.equal('TRANSFERRED', `Bước ${i+1} phải TRANSFERRED`);",
+                  "    pm.expect(chain[i].endAtUTC).to.not.be.null;",
+                  "  }",
+                  "});",
+                  "pm.test('chainDepth tăng tuần tự từ 1', () => {",
+                  "  chain.forEach((step, idx) => pm.expect(step.chainDepth).to.equal(idx + 1));",
+                  "});",
+                  "pm.test('Chỉ 1 bước ACTIVE', () => {",
+                  "  const active = chain.filter(c => c.ownershipStatus === 'ACTIVE');",
+                  "  pm.expect(active.length).to.equal(1);",
+                  "});",
+                  "pm.test('Thứ tự stepNumber tăng dần', () => {",
+                  "  for (let i = 1; i < chain.length; i++) {",
+                  "    pm.expect(chain[i].stepNumber).to.equal(chain[i-1].stepNumber + 1);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentHistory}}/ownership-history?detail=DETAILED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentHistory}}",
+                "ownership-history"
+              ],
+              "query": [
+                {
+                  "key": "detail",
+                  "value": "DETAILED"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 5. Ownership History — SUMMARY",
+      "item": [
+        {
+          "name": "5.1 ?detail=SUMMARY — cấu trúc gọn → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('detailLevel = SUMMARY', () => pm.expect(data.detailLevel).to.equal('SUMMARY'));",
+                  "if (data.chain.length > 0) {",
+                  "  const first = data.chain[0];",
+                  "  pm.test('currentOwner là string (tên party)', () => pm.expect(first.currentOwner).to.be.a('string'));",
+                  "  pm.test('Không có ownershipDurationHours (chỉ DETAILED)', () => pm.expect(first).to.not.have.property('ownershipDurationHours'));",
+                  "  pm.test('Có ownershipDuration', () => pm.expect(first).to.have.property('ownershipDuration'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentHistory}}/ownership-history?detail=SUMMARY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentHistory}}",
+                "ownership-history"
+              ],
+              "query": [
+                {
+                  "key": "detail",
+                  "value": "SUMMARY"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5.2 ?detail=summary (lowercase) → tự uppercase → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.equal(200));",
+                  "pm.test('detailLevel tự convert thành SUMMARY', () => pm.expect(pm.response.json().data.detailLevel).to.equal('SUMMARY'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentHistory}}/ownership-history?detail=summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentHistory}}",
+                "ownership-history"
+              ],
+              "query": [
+                {
+                  "key": "detail",
+                  "value": "summary"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5.3 ?detail=INVALID_VALUE → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.expect(pm.response.code).to.equal(400));",
+                  "pm.test('error đề cập SUMMARY hoặc DETAILED', () => pm.expect(pm.response.json().error).to.match(/SUMMARY|DETAILED/i));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentHistory}}/ownership-history?detail=FULL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentHistory}}",
+                "ownership-history"
+              ],
+              "query": [
+                {
+                  "key": "detail",
+                  "value": "FULL"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚠ 6. History — Error Cases",
+      "item": [
+        {
+          "name": "6.1 Shipment không tồn tại → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.expect(pm.response.code).to.equal(404));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/SHP-DOES-NOT-EXIST/ownership-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "SHP-DOES-NOT-EXIST",
+                "ownership-history"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6.2 Shipment ALARM có 1 bước ownership → 200, chain.length=1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 — history của ALARM shipment vẫn đọc được', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const chain = pm.response.json().data.chain;",
+                  "pm.test('chain có đúng 1 bước', () => pm.expect(chain.length).to.equal(1));",
+                  "pm.test('Bước đó là ACTIVE', () => pm.expect(chain[0].ownershipStatus).to.equal('ACTIVE'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipments/{{shipmentAlarm}}/ownership-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipmentAlarm}}",
+                "ownership-history"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
