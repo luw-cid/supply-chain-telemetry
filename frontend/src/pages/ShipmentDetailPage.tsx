@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Card, Descriptions, Pagination, Space, Tabs, Typography } from 'antd'
+import { SwapOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Descriptions, Pagination, Space, Tabs, Typography } from 'antd'
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { getOwnershipHistory } from '../api/custody'
 import { getShipment } from '../api/shipments'
 import { getTelemetryLogs, getTraceRoute } from '../api/telemetry'
@@ -9,12 +10,15 @@ import CustodyTimeline from '../components/CustodyTimeline'
 import ShipmentStatusBadge from '../components/ShipmentStatusBadge'
 import TelemetryIoTChart from '../components/TelemetryIoTChart'
 import TraceRouteMap from '../components/TraceRouteMap'
+import { useAuth } from '../contexts/AuthContext'
 import { useThemeMode } from '../contexts/ThemeContext'
 import { mapOwnershipChainToEvents } from '../utils/ownershipTimeline'
 
 export default function ShipmentDetailPage() {
   const { isDark } = useThemeMode()
+  const { user } = useAuth()
   const { shipmentId = '' } = useParams()
+  const canCustodyTransfer = user?.role === 'ADMIN' || user?.role === 'LOGISTICS'
   const [telPage, setTelPage] = useState(1)
   const [telLimit] = useState(100)
 
@@ -81,7 +85,19 @@ export default function ShipmentDetailPage() {
               {String(shipment?.ShipmentID ?? shipmentId)}
             </Typography.Title>
           </div>
-          <ShipmentStatusBadge status={status} />
+          <Space wrap align="center">
+            {canCustodyTransfer && status !== 'ALARM' && (
+              <Link to={`/custody/transfer?shipmentId=${encodeURIComponent(shipmentId)}`}>
+                <Button type="primary" icon={<SwapOutlined />}>
+                  Bàn giao lô này
+                </Button>
+              </Link>
+            )}
+            {canCustodyTransfer && status === 'ALARM' && (
+              <Typography.Text type="secondary">ALARM: xử lý cảnh báo trước khi bàn giao</Typography.Text>
+            )}
+            <ShipmentStatusBadge status={status} />
+          </Space>
         </div>
         {shipment && (
           <Descriptions column={1} className="app-descriptions mt-4">

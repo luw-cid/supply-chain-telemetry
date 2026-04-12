@@ -15,6 +15,7 @@ export default function ShipmentsPage() {
   const { isDark } = useThemeMode()
   const isAdmin = user?.role === 'ADMIN'
   const isOwner = user?.role === 'OWNER'
+  const canCustodyTransfer = user?.role === 'ADMIN' || user?.role === 'LOGISTICS'
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
   const [limit] = useState(20)
@@ -161,12 +162,19 @@ export default function ShipmentsPage() {
             title: 'Thao tác',
             key: 'act',
             render: (_, r) => (
-              <Space>
+              <Space wrap>
                 <Link to={`/shipments/${r.ShipmentID}`}>
                   <Button size="small" type="link">
                     Chi tiết
                   </Button>
                 </Link>
+                {canCustodyTransfer && r.Status !== 'ALARM' && (
+                  <Link to={`/custody/transfer?shipmentId=${encodeURIComponent(r.ShipmentID)}`}>
+                    <Button size="small" type="link">
+                      Bàn giao
+                    </Button>
+                  </Link>
+                )}
               </Space>
             ),
           },

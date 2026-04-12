@@ -227,6 +227,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
     return {
       stepNumber: row.step_number,
       currentOwner: {
+        partyId: row.current_owner_party_id,
         name: row.current_owner_name,
         type: row.current_owner_type,
         email: row.current_owner_email,
@@ -235,6 +236,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
       },
       previousOwner: row.previous_owner_name
         ? {
+            partyId: row.previous_owner_party_id,
             name: row.previous_owner_name,
             type: row.previous_owner_type,
           }

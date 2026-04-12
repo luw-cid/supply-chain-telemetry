@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Card, Collapse, Space, Typography, Spin } from 'antd'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { getOwnershipHistory } from '../api/custody'
 import { listShipments } from '../api/shipments'
 import CustodyTimeline from '../components/CustodyTimeline'
@@ -28,6 +29,8 @@ function CustodyPanel({ shipmentId }: { shipmentId: string }) {
 
 export default function ChainCustodyPage() {
   const { isDark } = useThemeMode()
+  const { user } = useAuth()
+  const canTransfer = user?.role === 'ADMIN' || user?.role === 'LOGISTICS'
   const listQ = useQuery({
     queryKey: ['shipments', 'chain-overview'],
     queryFn: () => listShipments({ limit: 100, page: 1 }),
@@ -66,9 +69,19 @@ export default function ChainCustodyPage() {
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <Typography.Text className={idCls}>{s.ShipmentID}</Typography.Text>
                     <Typography.Text className={linkWrapCls}>
-                      <Link to={`/shipments/${s.ShipmentID}`} className={linkCls}>
-                        Chi tiết lô
-                      </Link>
+                      <Space size="middle" wrap>
+                        <Link to={`/shipments/${s.ShipmentID}`} className={linkCls}>
+                          Chi tiết lô
+                        </Link>
+                        {canTransfer && s.Status !== 'ALARM' && (
+                          <Link
+                            to={`/custody/transfer?shipmentId=${encodeURIComponent(s.ShipmentID)}`}
+                            className={linkCls}
+                          >
+                            Bàn giao
+                          </Link>
+                        )}
+                      </Space>
                     </Typography.Text>
                   </div>
                   <Typography.Text className={subCls}>

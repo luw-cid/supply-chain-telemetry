@@ -313,6 +313,8 @@ BEGIN
         SELECT
             p_ShipmentID AS shipment_id,
             step_number,
+            current_owner_party_id,
+            previous_owner_party_id,
             current_owner_name,
             current_owner_type,
             current_owner_email,

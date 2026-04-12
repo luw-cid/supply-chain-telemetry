@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Typography, message } from 'antd'
+import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd'
 import { useState } from 'react'
 import { getApiErrorMessage } from '../api/client'
 import { createPort, deletePort, listPorts, updatePort, type CreatePortPayload, type PortRow } from '../api/reference'
@@ -117,7 +117,12 @@ export default function PortsPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <Typography.Title level={4} className={titleCls}>
-              Quản lý cảng (đi / đến)
+              <span>Quản lý cảng (đi / đến)</span>
+              {!isAdmin && (
+                <Tag color="default" className="ml-2 align-middle font-normal">
+                  Chỉ xem
+                </Tag>
+              )}
             </Typography.Title>
             <Typography.Paragraph className={`!mb-0 !mt-2 ${subCls}`}>
               Master data cảng dùng cho lô hàng và bàn giao. Chỉ ADMIN được thêm, sửa, xóa.
