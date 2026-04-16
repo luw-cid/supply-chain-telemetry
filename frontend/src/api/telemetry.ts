@@ -52,6 +52,9 @@ export async function getTraceRoute(shipmentId: string, maxPoints?: number) {
 export async function getRouteOptimization(origin: string, destination: string, extra?: Record<string, string>) {
   const { data } = await api.get('/api/v1/analytics/route-optimization', {
     params: { origin, destination, ...extra },
+    // Route optimization may return 4xx for business outcomes (e.g. no route found).
+    // Let caller handle payload instead of treating it as transport failure.
+    validateStatus: (status) => status < 500,
   })
   return data
 }
