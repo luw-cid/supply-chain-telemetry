@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
-import mapboxgl from 'mapbox-gl'
+import maplibregl from 'maplibre-gl'
 import type { Shipment, TelemetryPoint } from '../types'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import 'maplibre-gl/dist/maplibre-gl.css'
 
-const fallbackStyle: mapboxgl.StyleSpecification = {
+const fallbackStyle: maplibregl.StyleSpecification = {
   version: 8,
   sources: {},
   layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1220' } }],
@@ -28,8 +28,8 @@ const markerClassByStatus: Record<TelemetryPoint['status'], string> = {
 
 export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
-  const markerRef = useRef<mapboxgl.Marker | null>(null)
+  const mapRef = useRef<maplibregl.Map | null>(null)
+  const markerRef = useRef<maplibregl.Marker | null>(null)
   const currentPointRef = useRef(currentPoint)
   currentPointRef.current = currentPoint
 
@@ -47,17 +47,12 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
     const mapId = import.meta.env.VITE_MAPTILER_MAP_ID?.trim() || 'streets-v2'
     const useMapTiler = Boolean(apiKey)
 
-    // MapTiler + Mapbox GL: use MapTiler key as accessToken (see MapTiler docs).
-    if (useMapTiler) {
-      mapboxgl.accessToken = apiKey
-    }
-
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: useMapTiler ? mapTilerStyleUrl(apiKey, mapId) : fallbackStyle,
       center: routeCoordinates[0],
       zoom: 3,
-      attributionControl: useMapTiler,
+      attributionControl: useMapTiler ? undefined : false,
     })
 
     mapRef.current = map
@@ -87,13 +82,13 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
       const pt = currentPointRef.current
       const markerEl = document.createElement('div')
       markerEl.className = `map-marker ${markerClassByStatus[pt.status]}`
-      markerRef.current = new mapboxgl.Marker({ element: markerEl })
+      markerRef.current = new maplibregl.Marker({ element: markerEl })
         .setLngLat([pt.lng, pt.lat])
         .addTo(map)
 
       const bounds = routeCoordinates.reduce(
         (acc, coord) => acc.extend(coord),
-        new mapboxgl.LngLatBounds(routeCoordinates[0], routeCoordinates[0]),
+        new maplibregl.LngLatBounds(routeCoordinates[0], routeCoordinates[0]),
       )
       map.fitBounds(bounds, { padding: 56, duration: 1200 })
     })
@@ -114,7 +109,7 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
 
     const map = mapRef.current
     const updateRoute = () => {
-      const source = map.getSource('route') as mapboxgl.GeoJSONSource | undefined
+      const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined
       source?.setData({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: routeCoordinates },
@@ -123,7 +118,7 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
 
       const bounds = routeCoordinates.reduce(
         (acc, coord) => acc.extend(coord),
-        new mapboxgl.LngLatBounds(routeCoordinates[0], routeCoordinates[0]),
+        new maplibregl.LngLatBounds(routeCoordinates[0], routeCoordinates[0]),
       )
       map.fitBounds(bounds, { padding: 56, duration: 900 })
     }
@@ -152,7 +147,7 @@ export default function RouteMap({ shipment, currentPoint }: RouteMapProps) {
       <div className="pointer-events-none absolute bottom-3 right-3 rounded bg-slate-950/85 px-3 py-1 text-xs text-slate-300">
         {import.meta.env.VITE_MAPTILER_API_KEY?.trim()
           ? 'MapTiler · route simulation'
-          : 'Mapbox GL · route simulation (add VITE_MAPTILER_API_KEY)'}
+          : 'MapLibre · route simulation (add VITE_MAPTILER_API_KEY)'}
       </div>
     </div>
   )
