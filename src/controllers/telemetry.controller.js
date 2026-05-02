@@ -80,7 +80,7 @@ async function routeOptimizationController(req, res, next) {
 
 		if (!result.success) {
 			let statusCode = 400;
-			if (result.error === 'PORT_NOT_FOUND') {
+			if (result.error === 'PORT_NOT_FOUND' || result.error === 'ROUTE_NOT_AVAILABLE') {
 				statusCode = 404;
 			}
 			if (typeof result.message === 'string' && result.message.toLowerCase().includes('no routes found')) {

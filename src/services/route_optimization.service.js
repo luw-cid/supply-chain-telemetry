@@ -9,6 +9,7 @@
 
 const { findOptimalRoutes, getRouteStatistics } = require('../database/mongo/route_optimization_aggregation');
 const PortEdges = require('../models/mongodb/port_edges');
+const portRepository = require('../repositories/port.repository');
 const AppError = require('../utils/app-error');
 
 /**
@@ -46,7 +47,7 @@ async function getOptimalRoutes(originPort, destinationPort, options = {}) {
     if (!portsExist.valid) {
       return {
         success: false,
-        error: 'PORT_NOT_FOUND',
+        error: portsExist.error || 'PORT_NOT_FOUND',
         message: portsExist.message
       };
     }
@@ -191,23 +192,45 @@ async function getRouteRecommendationsForCargo(originPort, destinationPort, carg
  */
 async function validatePorts(originPort, destinationPort) {
   try {
-    // Check if there are any edges from origin
-    const originExists = await PortEdges.exists({ from_port: originPort });
-    
-    // Check if there are any edges to destination
-    const destinationExists = await PortEdges.exists({ to_port: destinationPort });
+    const [originPortRecord, destinationPortRecord] = await Promise.all([
+      portRepository.findPortByCode(originPort),
+      portRepository.findPortByCode(destinationPort)
+    ]);
 
-    if (!originExists) {
+    if (!originPortRecord) {
       return {
         valid: false,
+        error: 'PORT_NOT_FOUND',
         message: `Origin port ${originPort} not found in database`
       };
     }
 
-    if (!destinationExists) {
+    if (!destinationPortRecord) {
       return {
         valid: false,
+        error: 'PORT_NOT_FOUND',
         message: `Destination port ${destinationPort} not found in database`
+      };
+    }
+
+    const [originHasOutboundEdge, destinationHasInboundEdge] = await Promise.all([
+      PortEdges.exists({ from_port: originPort, is_active: true }),
+      PortEdges.exists({ to_port: destinationPort, is_active: true })
+    ]);
+
+    if (!originHasOutboundEdge) {
+      return {
+        valid: false,
+        error: 'ROUTE_NOT_AVAILABLE',
+        message: `Origin port ${originPort} exists but has no active outbound routes`
+      };
+    }
+
+    if (!destinationHasInboundEdge) {
+      return {
+        valid: false,
+        error: 'ROUTE_NOT_AVAILABLE',
+        message: `Destination port ${destinationPort} exists but has no active inbound routes`
       };
     }
 

@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useRef } from 'react'
-import mapboxgl from 'mapbox-gl'
+import maplibregl from 'maplibre-gl'
 import type { PortRow } from '../api/reference'
 import type { ShipmentListItem } from '../api/shipments'
 import { useThemeMode } from '../contexts/ThemeContext'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import 'maplibre-gl/dist/maplibre-gl.css'
 
-const fallbackStyle: mapboxgl.StyleSpecification = {
+const fallbackStyle: maplibregl.StyleSpecification = {
   version: 8,
-  sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1220' } }],
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '&copy; OpenStreetMap contributors',
+    },
+  },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 }
 
 function mapTilerStyleUrl(apiKey: string, mapId: string): string {
@@ -42,8 +49,8 @@ interface GlobalFleetMapProps {
 export default function GlobalFleetMap({ shipments, ports = [] }: GlobalFleetMapProps) {
   const { isDark } = useThemeMode()
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
-  const markersRef = useRef<mapboxgl.Marker[]>([])
+  const mapRef = useRef<maplibregl.Map | null>(null)
+  const markersRef = useRef<maplibregl.Marker[]>([])
 
   const portPoints = useMemo(
     () =>
@@ -84,14 +91,13 @@ export default function GlobalFleetMap({ shipments, ports = [] }: GlobalFleetMap
     const apiKey = import.meta.env.VITE_MAPTILER_API_KEY?.trim() ?? ''
     const mapId = import.meta.env.VITE_MAPTILER_MAP_ID?.trim() || 'streets-v2'
     const useMapTiler = Boolean(apiKey)
-    if (useMapTiler) mapboxgl.accessToken = apiKey
 
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: useMapTiler ? mapTilerStyleUrl(apiKey, mapId) : fallbackStyle,
       center: [105, 15],
       zoom: 2,
-      attributionControl: useMapTiler,
+      attributionControl: useMapTiler ? undefined : false,
     })
     mapRef.current = map
 
@@ -116,7 +122,7 @@ export default function GlobalFleetMap({ shipments, ports = [] }: GlobalFleetMap
         el.className = 'map-marker-port'
         el.title = `${p.label} (${p.id})`
         el.innerHTML = PORT_MARKER_SVG
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(map)
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(map)
         markersRef.current.push(marker)
       })
 
@@ -124,14 +130,14 @@ export default function GlobalFleetMap({ shipments, ports = [] }: GlobalFleetMap
         const el = document.createElement('div')
         el.className = p.alarm ? 'map-marker map-marker-alarm-pulse is-alarm' : 'map-marker is-normal'
         el.title = p.id
-        const marker = new mapboxgl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map)
+        const marker = new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map)
         markersRef.current.push(marker)
       })
 
       if (boundsPoints.length > 0) {
         const bounds = boundsPoints.reduce(
           (acc, pt) => acc.extend([pt.lng, pt.lat]),
-          new mapboxgl.LngLatBounds(
+          new maplibregl.LngLatBounds(
             [boundsPoints[0].lng, boundsPoints[0].lat],
             [boundsPoints[0].lng, boundsPoints[0].lat],
           ),
