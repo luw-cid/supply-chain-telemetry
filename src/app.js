@@ -16,6 +16,7 @@ const {
   notFoundHandler,
   errorHandler,
 } = require('./middlewares/error-handler.middleware');
+const outboxProcessor = require('./services/outbox.processor');
 
 // const { runMigration } = require('./configs/migration');
 
@@ -36,8 +37,8 @@ app.use((req, res, next) => {
   return next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Mount routes
 app.use(routes);
@@ -52,9 +53,20 @@ async function startServer() {
     // Bỏ qua migration theo yêu cầu
     // await runMigration();
 
-    app.listen(port, () => {
+    // Khởi động Outbox Processor để xử lý alarm notification
+    outboxProcessor.start();
+
+    const server = app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
     });
+
+    const shutdown = () => {
+      console.log('[Server] Shutting down...');
+      outboxProcessor.stop();
+      server.close(() => process.exit(0));
+    };
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
   } catch (error) {
     console.error('[Server]Error starting server', error);
     process.exit(1);

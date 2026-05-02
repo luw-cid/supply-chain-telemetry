@@ -15,6 +15,8 @@ export interface AlarmRow {
 
 export async function listAlarms(params: {
   status?: string
+  severity?: string
+  alarmType?: string
   fromDate?: string
   toDate?: string
   page?: number
@@ -24,5 +26,10 @@ export async function listAlarms(params: {
     '/api/v1/alarms',
     { params },
   )
+  return data
+}
+
+export async function updateAlarm(alarmId: string, status: 'ACKNOWLEDGED' | 'RESOLVED' | 'FALSE_ALARM') {
+  const { data } = await api.patch<{ success: boolean; data: unknown }>(`/api/v1/alarms/${alarmId}`, { status })
   return data
 }

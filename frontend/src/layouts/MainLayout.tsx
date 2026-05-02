@@ -33,16 +33,17 @@ function buildMenuItems(role: string | undefined): MenuProps['items'] {
   const shipments = { key: '/shipments', icon: <DeploymentUnitOutlined />, label: 'Lô hàng' }
   const custodyTransfer = { key: '/custody/transfer', icon: <SwapOutlined />, label: 'Chuyển giao' }
   const custodyChain = { key: '/custody/chain', icon: <ApartmentOutlined />, label: 'Chuỗi sở hữu' }
-  const routeOpt = { key: '/analytics/route-optimization', icon: <BarChartOutlined />, label: 'Phân tích lộ trình' }
+  const routeOpt = { key: '/analytics/route-optimization', icon: <BarChartOutlined />, label: 'Tối ưu lộ trình' }
+  const analytics = { key: '/analytics', icon: <BarChartOutlined />, label: 'Phân tích' }
   const audit = { key: '/audit-alerts', icon: <AlertOutlined />, label: 'Cảnh báo & Kiểm toán' }
 
   switch (role) {
     case 'OWNER':
       return [dashboard, shipments]
     case 'ADMIN':
-      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, audit]
+      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, analytics, routeOpt, audit]
     case 'LOGISTICS':
-      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt]
+      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, analytics, routeOpt]
     case 'AUDITOR':
       return [dashboard, parties, shipments, custodyChain, audit]
     default:
@@ -55,7 +56,8 @@ function selectedKey(pathname: string): string {
   if (pathname.startsWith('/parties')) return '/parties'
   if (pathname.startsWith('/shipments')) return '/shipments'
   if (pathname.startsWith('/custody')) return pathname.startsWith('/custody/transfer') ? '/custody/transfer' : '/custody/chain'
-  if (pathname.startsWith('/analytics')) return '/analytics/route-optimization'
+  if (pathname.startsWith('/analytics/route-optimization')) return '/analytics/route-optimization'
+  if (pathname.startsWith('/analytics')) return '/analytics'
   if (pathname.startsWith('/audit-alerts')) return '/audit-alerts'
   return pathname
 }

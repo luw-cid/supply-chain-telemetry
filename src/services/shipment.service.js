@@ -144,8 +144,53 @@ async function listShipments(query = {}, access = {}) {
   });
 }
 
+async function updateShipmentStatus(shipmentId, body, access = {}) {
+  if (!shipmentId) throw AppError.badRequest('Shipment id is required');
+  const { status, alarmResolved } = body || {};
+  if (!status) throw AppError.badRequest('status is required');
+
+  const validStatuses = ['NORMAL', 'IN_TRANSIT', 'COMPLETED'];
+  if (!validStatuses.includes(status)) {
+    throw AppError.badRequest('status must be NORMAL, IN_TRANSIT, or COMPLETED');
+  }
+
+  const shipment = await shipmentRepository.findShipmentById(shipmentId);
+  if (!shipment) throw AppError.notFound(`Shipment ${shipmentId} not found`);
+
+  const { role } = access;
+  if (role !== 'ADMIN' && role !== 'LOGISTICS') {
+    throw AppError.forbidden('Only ADMIN or LOGISTICS can update shipment status');
+  }
+
+  const connection = await shipmentRepository.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    await connection.query(
+      `UPDATE Shipments SET Status = ?, UpdatedAtUTC = CURRENT_TIMESTAMP(6) WHERE ShipmentID = ?`,
+      [status, shipmentId]
+    );
+
+    if (alarmResolved) {
+      await connection.query(
+        `UPDATE Shipments SET AlarmAtUTC = NULL, AlarmReason = NULL, LastTelemetryStatus = 'OK' WHERE ShipmentID = ?`,
+        [shipmentId]
+      );
+    }
+
+    await connection.commit();
+    return { shipmentId, status, alarmResolved: !!alarmResolved };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
 module.exports = {
   createShipment,
   getShipmentDetails,
   listShipments,
+  updateShipmentStatus,
 };

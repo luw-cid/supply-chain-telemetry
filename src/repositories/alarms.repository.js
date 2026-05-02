@@ -1,7 +1,7 @@
 const { pool } = require('../configs/sql.config');
 
 /**
- * @param {{ status?: string, fromDate?: string, toDate?: string, page?: number, limit?: number }} opts
+ * @param {{ status?: string, severity?: string, alarmType?: string, fromDate?: string, toDate?: string, page?: number, limit?: number }} opts
  */
 async function listAlarmEvents(opts = {}) {
   const page = Math.max(parseInt(String(opts.page), 10) || 1, 1);
@@ -14,6 +14,14 @@ async function listAlarmEvents(opts = {}) {
   if (opts.status) {
     conditions.push('ae.Status = ?');
     params.push(String(opts.status).toUpperCase());
+  }
+  if (opts.severity) {
+    conditions.push('ae.Severity = ?');
+    params.push(String(opts.severity).toUpperCase());
+  }
+  if (opts.alarmType) {
+    conditions.push('ae.AlarmType = ?');
+    params.push(String(opts.alarmType));
   }
   if (opts.fromDate) {
     conditions.push('ae.AlarmAtUTC >= ?');
@@ -55,6 +63,24 @@ async function listAlarmEvents(opts = {}) {
   return { items: rows, total, page, limit };
 }
 
+async function updateAlarmEvent({ alarmId, status, userId }) {
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const setClause = status === 'ACKNOWLEDGED'
+    ? `Status = ?, AcknowledgedBy = ?, AcknowledgedAtUTC = ?`
+    : `Status = ?, ResolvedBy = ?, ResolvedAtUTC = ?`;
+  const [result] = await pool.query(
+    `UPDATE AlarmEvents SET ${setClause} WHERE AlarmEventID = ? AND Status = 'OPEN'`,
+    [status, userId, now, alarmId]
+  );
+  if (result.affectedRows === 0) {
+    const exists = await pool.query('SELECT Status FROM AlarmEvents WHERE AlarmEventID = ?', [alarmId]);
+    if (exists[0].length === 0) throw require('../utils/app-error').notFound('Alarm not found');
+    throw require('../utils/app-error').badRequest('Alarm is not in OPEN status');
+  }
+  return { alarmId, status, userId, updatedAt: now };
+}
+
 module.exports = {
   listAlarmEvents,
+  updateAlarmEvent,
 };

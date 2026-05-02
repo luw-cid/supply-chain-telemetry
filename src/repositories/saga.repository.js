@@ -3,8 +3,8 @@
 const { pool } = require('../configs/sql.config');
 const TelemetryPoints = require('../models/mongodb/telemetry_points');
 
-async function insertTelemetryPoint({ shipmentId, deviceId, timestamp, location, temp, humidity }) {
-  return TelemetryPoints.create({
+async function insertTelemetryPoint({ shipmentId, deviceId, timestamp, location, temp, humidity, idempotencyKey }) {
+  const doc = {
     meta: { shipment_id: shipmentId, device_id: deviceId },
     t: timestamp ? new Date(timestamp) : new Date(),
     location: {
@@ -13,7 +13,13 @@ async function insertTelemetryPoint({ shipmentId, deviceId, timestamp, location,
     },
     temp,
     humidity,
-  });
+  };
+  if (idempotencyKey) doc.idempotency_key = idempotencyKey;
+  return TelemetryPoints.create(doc);
+}
+
+async function findByIdempotencyKey(key) {
+  return TelemetryPoints.findOne({ idempotency_key: key }).lean();
 }
 
 async function getTraceRouteContext(shipmentId) {
@@ -53,6 +59,12 @@ async function markViolationAndEnqueueAlarm({ shipmentId, alarmReason, outboxPay
     );
 
     await connection.query(
+      `INSERT INTO AlarmEvents (AlarmEventID, ShipmentID, AlarmType, Severity, Status, AlarmReason, AlarmAtUTC, Source)
+       VALUES (UUID(), ?, 'TEMP_VIOLATION', 'HIGH', 'OPEN', ?, CURRENT_TIMESTAMP(6), 'SQL_TRIGGER')`,
+      [shipmentId, alarmReason]
+    );
+
+    await connection.query(
       `INSERT INTO outbox_events (event_type, payload)
        VALUES ('ALARM_TRIGGERED', ?)`,
       [JSON.stringify(outboxPayload)]
@@ -69,6 +81,7 @@ async function markViolationAndEnqueueAlarm({ shipmentId, alarmReason, outboxPay
 
 module.exports = {
   insertTelemetryPoint,
+  findByIdempotencyKey,
   getTraceRouteContext,
   getShipmentParties,
   markViolationAndEnqueueAlarm,

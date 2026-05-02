@@ -7,24 +7,15 @@ const mongoose = require('mongoose');
 // ============================================================================
 const telemetryPointsSchema = new mongoose.Schema(
   {
-    // Meta object - dùng làm partition key cho time-series collection
     meta: {
-      // Shipment ID - link to MySQL Shipments table
       shipment_id: { type: String, required: true },
-
-      // Device ID của IoT tracker - dùng để identify thiết bị cụ thể
       device_id: { type: String, required: true },
     },
 
-    // Timestamp - time field cho time-series collection
     t: { type: Date, required: true },
 
-    // Location as GeoJSON Point - chuẩn cho geospatial queries
     location: {
-      // Type phải là 'Point' cho 2dsphere index
       type: { type: String, enum: ['Point'], default: 'Point' },
-
-      // Coordinates array: [longitude, latitude] - NOTE: longitude first!
       coordinates: {
         type: [Number],
         required: true,
@@ -44,7 +35,6 @@ const telemetryPointsSchema = new mongoose.Schema(
       },
     },
 
-    // Temperature (Celsius) - với validation range hợp lý
     temp: {
       type: Number,
       required: true,
@@ -52,11 +42,15 @@ const telemetryPointsSchema = new mongoose.Schema(
       max: 100,
     },
 
-    // Humidity (%) - optional
     humidity: {
       type: Number,
       min: 0,
       max: 100,
+    },
+
+    idempotency_key: {
+      type: String,
+      sparse: true,
     },
   },
   {

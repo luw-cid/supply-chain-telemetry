@@ -45,11 +45,42 @@ async function ingestTelemetry(telemetryPoint) {
         location,
         temp,
         humidity,
+        idempotency_key,
     } = telemetryPoint;
 
     // ── 1. Validate input ────────────────────────────────────────────────────
     if (!shipment_id || !device_id || !location?.lng || !location?.lat || typeof temp !== 'number') {
         throw AppError.badRequest('Missing required telemetry fields');
+    }
+    if (typeof shipment_id !== 'string' || shipment_id.length > 64) {
+        throw AppError.badRequest('shipment_id must be a string (max 64 chars)');
+    }
+    if (typeof device_id !== 'string' || device_id.length > 64) {
+        throw AppError.badRequest('device_id must be a string (max 64 chars)');
+    }
+    if (typeof location.lng !== 'number' || typeof location.lat !== 'number') {
+        throw AppError.badRequest('location.lng and location.lat must be numbers');
+    }
+    if (humidity != null && (typeof humidity !== 'number' || humidity < 0 || humidity > 100)) {
+        throw AppError.badRequest('humidity must be a number between 0 and 100');
+    }
+
+    // ── 1b. Idempotency check ────────────────────────────────────────────────
+    if (idempotency_key) {
+        if (typeof idempotency_key !== 'string' || idempotency_key.length > 128) {
+            throw AppError.badRequest('idempotency_key must be a string (max 128 chars)');
+        }
+        const existing = await sagaRepository.findByIdempotencyKey(idempotency_key);
+        if (existing) {
+            return {
+                shipment_id,
+                mongo_point_id: existing._id,
+                temp,
+                tempMax: null,
+                violation: false,
+                duplicate: true,
+            };
+        }
     }
 
     // ── 2. Ghi telemetry vào MongoDB ─────────────────────────────────────────
@@ -60,6 +91,7 @@ async function ingestTelemetry(telemetryPoint) {
         location,
         temp,
         humidity,
+        idempotencyKey: idempotency_key,
     });
 
     // ── 3. Lấy TempMax + thông tin shipment từ MySQL ─────────────────────────
@@ -70,21 +102,32 @@ async function ingestTelemetry(telemetryPoint) {
         throw AppError.notFound(`TempMax not found for shipment ${shipment_id}`);
     }
 
+    // ── 3b. Out-of-order check: chỉ xử lý nếu điểm mới hơn điểm gần nhất ────
+    const incomingTime = timestamp ? new Date(timestamp) : new Date();
+    const lastTime = row?.LastTelemetryAtUTC ? new Date(row.LastTelemetryAtUTC) : null;
+    if (lastTime && incomingTime < lastTime) {
+        return {
+            shipment_id,
+            mongo_point_id: point._id,
+            temp,
+            tempMax,
+            violation: false,
+            stale: true,
+        };
+    }
+
     // ── 4. Kiểm tra vi phạm & thực thi Outbox Pattern ───────────────────────
     let violation = false;
 
     if (temp > tempMax) {
         violation = true;
 
-        // Lấy thông tin liên hệ của shipper và consignee để nhúng vào payload.
-        // Làm TRƯỚC transaction để tránh giữ lock lâu trong transaction.
         const { shipper_id, consignee_id } = await _safeGetShipmentParties(shipment_id);
         const [shipperContact, consigneeContact] = await Promise.all([
             getPartyContact(shipper_id),
             getPartyContact(consignee_id),
         ]);
 
-        // Payload đầy đủ cho event ALARM_TRIGGERED
         const outboxPayload = {
             shipment_id,
             device_id,
@@ -101,7 +144,6 @@ async function ingestTelemetry(telemetryPoint) {
             consignee_email: consigneeContact.email,
         };
 
-        // ── ATOMIC TRANSACTION: cập nhật DB + ghi outbox cùng lúc ────────────
         try {
             await sagaRepository.markViolationAndEnqueueAlarm({
                 shipmentId: shipment_id,
@@ -111,7 +153,7 @@ async function ingestTelemetry(telemetryPoint) {
 
             console.log(
                 `[SagaOrchestrator] ✅ Shipment ${shipment_id} marked VIOLATION. ` +
-                `Outbox event created. Temp: ${temp}°C / Max: ${tempMax}°C`
+                `Temp: ${temp}°C / Max: ${tempMax}°C`
             );
 
         } catch (err) {

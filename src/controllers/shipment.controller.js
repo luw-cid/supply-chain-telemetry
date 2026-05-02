@@ -2,6 +2,7 @@ const {
   createShipment,
   getShipmentDetails,
   listShipments,
+  updateShipmentStatus,
 } = require('../services/shipment.service');
 
 async function listShipmentsController(req, res, next) {
@@ -51,8 +52,21 @@ async function getShipmentDetailsController(req, res, next) {
   }
 }
 
+async function updateShipmentStatusController(req, res, next) {
+  try {
+    const data = await updateShipmentStatus(req.params.id, req.body, {
+      role: req.user?.role,
+      partyId: req.user?.partyId ?? null,
+    });
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listShipmentsController,
   createShipmentController,
   getShipmentDetailsController,
+  updateShipmentStatusController,
 };

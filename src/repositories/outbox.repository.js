@@ -15,7 +15,7 @@ async function fetchAndMarkPendingEvents(batchSize) {
          AND  (scheduled_at IS NULL OR scheduled_at <= NOW())
        ORDER  BY created_at ASC
        LIMIT  ?
-       FOR UPDATE SKIP LOCKED`,
+       FOR UPDATE`,
       [batchSize]
     );
 

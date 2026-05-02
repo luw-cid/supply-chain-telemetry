@@ -218,6 +218,11 @@ async function listCargoProfilesForSelect() {
   return rows;
 }
 
+async function getConnection() {
+  const { pool } = require('../configs/sql.config');
+  return pool.getConnection();
+}
+
 module.exports = {
   findShipmentById,
   findCargoProfileById,
@@ -229,4 +234,5 @@ module.exports = {
   findShipmentRouteById,
   listShipmentsWithDisplay,
   listCargoProfilesForSelect,
+  getConnection,
 };

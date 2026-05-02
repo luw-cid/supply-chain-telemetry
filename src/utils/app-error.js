@@ -31,6 +31,10 @@ class AppError extends Error {
 	static internal(message = 'Internal server error', details = null) {
 		return new AppError(message, 500, 'INTERNAL_ERROR', details);
 	}
+
+	static tooManyRequests(message = 'Too many requests', details = null) {
+		return new AppError(message, 429, 'TOO_MANY_REQUESTS', details);
+	}
 }
 
 module.exports = AppError;

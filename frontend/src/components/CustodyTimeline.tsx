@@ -8,9 +8,14 @@ interface CustodyTimelineProps {
 
 export default function CustodyTimeline({ items }: CustodyTimelineProps) {
   const { isDark } = useThemeMode()
+  const emptyCls = isDark ? 'text-slate-500' : 'text-slate-400'
   const ownerCls = isDark ? 'block !text-slate-100 !font-semibold' : 'block !text-slate-900 !font-semibold'
   const metaCls = isDark ? 'block !text-slate-400' : 'block !text-slate-600'
   const noteCls = isDark ? 'block !text-slate-300' : 'block !text-slate-700'
+
+  if (items.length === 0) {
+    return <Typography.Text className={emptyCls}>Chưa có dữ liệu bàn giao quyền sở hữu cho lô hàng này.</Typography.Text>
+  }
 
   return (
     <Timeline
