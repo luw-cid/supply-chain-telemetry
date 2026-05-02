@@ -69,15 +69,15 @@ export default function ShipmentDetailPage() {
     return (
       <Alert
         type="error"
-        message="Không tải được chi tiết lô hàng"
+        title="Không tải được chi tiết lô hàng"
         description={(detailQ.error as Error)?.message}
       />
     )
   }
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
-      <Card className="dashboard-card" bodyStyle={{ padding: 16 }} loading={detailQ.isLoading}>
+    <Space orientation="vertical" size={16} className="w-full">
+      <Card className="dashboard-card" styles={{ body: { padding: 16 } }} loading={detailQ.isLoading}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <Typography.Text className={labelCls}>Shipment ID</Typography.Text>
@@ -124,7 +124,7 @@ export default function ShipmentDetailPage() {
                     type="warning"
                     showIcon
                     className="mb-3"
-                    message="Chưa có dữ liệu trace hoặc lỗi API"
+                    title="Chưa có dữ liệu trace hoặc lỗi API"
                     description={(traceQ.error as Error)?.message}
                   />
                 )}
@@ -138,7 +138,7 @@ export default function ShipmentDetailPage() {
             children: (
               <Card className="dashboard-card">
                 {telQ.isError && (
-                  <Alert type="error" message="Không đọc được telemetry logs (cần JWT / dữ liệu)." className="mb-3" />
+                  <Alert type="error" title="Không đọc được telemetry logs (cần JWT / dữ liệu)." className="mb-3" />
                 )}
                 <TelemetryIoTChart logs={telQ.data?.logs ?? []} tempMin={tempMin} tempMax={tempMax} />
                 <div className="mt-4 flex justify-end">
@@ -159,7 +159,7 @@ export default function ShipmentDetailPage() {
             children: (
               <Card className="dashboard-card">
                 {custodyQ.isError && (
-                  <Alert type="warning" message="Không tải ownership-history (kiểm tra quyền JWT)." className="mb-3" />
+                  <Alert type="warning" title="Không tải ownership-history (kiểm tra quyền JWT)." className="mb-3" />
                 )}
                 <CustodyTimeline items={custodyEvents} />
               </Card>

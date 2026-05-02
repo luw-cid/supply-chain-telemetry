@@ -2,6 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import RequireAuth from './components/RequireAuth'
 import MainLayout from './layouts/MainLayout'
 import AuditAlertsPage from './pages/AuditAlertsPage'
+import AlertsPage from './pages/AlertsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 import CustodyTransferPage from './pages/CustodyTransferPage'
 import ChainCustodyPage from './pages/ChainCustodyPage'
 import DashboardPage from './pages/DashboardPage'
@@ -12,6 +14,7 @@ import PartiesPage from './pages/PartiesPage'
 import PortsPage from './pages/PortsPage'
 import ShipmentDetailPage from './pages/ShipmentDetailPage'
 import ShipmentsPage from './pages/ShipmentsPage'
+import TrackingMapPage from './pages/TrackingMapPage'
 
 function App() {
   return (
@@ -22,6 +25,9 @@ function App() {
         <Route element={<RequireAuth />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/tracking-map" element={<TrackingMapPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/ports" element={<PortsPage />} />
             <Route path="/parties" element={<PartiesPage />} />
             <Route path="/shipments" element={<ShipmentsPage />} />

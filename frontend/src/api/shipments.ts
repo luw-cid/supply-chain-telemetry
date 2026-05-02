@@ -3,6 +3,8 @@ import { api } from './client'
 export interface ShipmentListItem {
   ShipmentID: string
   Status: string
+  // BUG #6 FIX: cần để hiển thị đúng trạng thái VIOLATION (khác ALARM) trên map
+  LastTelemetryStatus: string | null
   WeightKg: number
   OriginPortCode: string
   DestinationPortCode: string

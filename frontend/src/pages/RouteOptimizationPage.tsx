@@ -27,7 +27,7 @@ export default function RouteOptimizationPage() {
   const titleCls = isDark ? '!text-slate-100' : '!text-slate-900'
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
+    <Space orientation="vertical" size={16} className="w-full">
       <Typography.Title level={3} className={titleCls}>
         Tối ưu lộ trình
       </Typography.Title>
@@ -71,15 +71,15 @@ export default function RouteOptimizationPage() {
       </Card>
 
       {optQ.isError && (
-        <Alert type="error" message="Không lấy được gợi ý lộ trình" description={(optQ.error as Error).message} />
+        <Alert type="error" title="Không lấy được gợi ý lộ trình" description={(optQ.error as Error).message} />
       )}
 
       {submitted && optQ.isSuccess && success === false && (
-        <Alert type="warning" message={(optQ.data as { message?: string }).message || 'No routes'} />
+        <Alert type="warning" title={(optQ.data as { message?: string }).message || 'No routes'} />
       )}
 
       {submitted && routes.length > 0 && (
-        <Space direction="vertical" className="w-full" size={12}>
+        <Space orientation="vertical" className="w-full" size={12}>
           {routes.map((route: unknown, idx: number) => {
             const r = route as {
               path?: string[]
@@ -99,7 +99,7 @@ export default function RouteOptimizationPage() {
                     <Statistic
                       title="Tổng giờ (ước tính)"
                       value={r.summary?.total_hours ?? '—'}
-                      valueStyle={{ color: '#e2e8f0' }}
+                      styles={{ content: { color: '#e2e8f0' } }}
                     />
                   </Col>
                   <Col span={8}>
@@ -110,7 +110,7 @@ export default function RouteOptimizationPage() {
                           ? `${(Number(r.summary.avg_alarm_rate) * 100).toFixed(2)}%`
                           : '—'
                       }
-                      valueStyle={{ color: '#bae6fd' }}
+                      styles={{ content: { color: '#bae6fd' } }}
                     />
                   </Col>
                   <Col span={8}>
@@ -121,7 +121,7 @@ export default function RouteOptimizationPage() {
                           ? `${(Number(r.summary.max_alarm_rate) * 100).toFixed(2)}%`
                           : '—'
                       }
-                      valueStyle={{ color: '#fca5a5' }}
+                      styles={{ content: { color: '#fca5a5' } }}
                     />
                   </Col>
                 </Row>

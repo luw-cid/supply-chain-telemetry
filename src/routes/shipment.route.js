@@ -3,6 +3,7 @@ const {
 	listShipmentsController,
 	createShipmentController,
 	getShipmentDetailsController,
+	getTrackingEventsController,
 } = require('../controllers/shipment.controller');
 const {
 	getTelemetryLogsController,
@@ -17,5 +18,8 @@ router.get('/:id', authenticate, getShipmentDetailsController);
 
 // GET /api/v1/shipments/:id/telemetry/logs
 router.get('/:id/telemetry/logs', authenticate, getTelemetryLogsController);
+
+// GET /api/shipments/:id/tracking/events
+router.get('/:id/tracking/events', authenticate, getTrackingEventsController);
 
 module.exports = router;

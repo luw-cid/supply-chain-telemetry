@@ -28,6 +28,9 @@ const { Sider, Header, Content } = Layout
 
 function buildMenuItems(role: string | undefined): MenuProps['items'] {
   const dashboard = { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' }
+  const trackingMap = { key: '/tracking-map', icon: <EnvironmentOutlined />, label: 'Tracking map' }
+  const alerts = { key: '/alerts', icon: <BellOutlined />, label: 'Alerts (demo)' }
+  const analytics = { key: '/analytics', icon: <BarChartOutlined />, label: 'Analytics (demo)' }
   const ports = { key: '/ports', icon: <EnvironmentOutlined />, label: 'Quản lý cảng' }
   const parties = { key: '/parties', icon: <TeamOutlined />, label: 'Đối tác' }
   const shipments = { key: '/shipments', icon: <DeploymentUnitOutlined />, label: 'Lô hàng' }
@@ -40,22 +43,26 @@ function buildMenuItems(role: string | undefined): MenuProps['items'] {
     case 'OWNER':
       return [dashboard, shipments]
     case 'ADMIN':
-      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, audit]
+      return [dashboard, trackingMap, alerts, analytics, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, audit]
     case 'LOGISTICS':
-      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt]
+      return [dashboard, trackingMap, alerts, analytics, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt]
     case 'AUDITOR':
-      return [dashboard, parties, shipments, custodyChain, audit]
+      return [dashboard, trackingMap, alerts, analytics, parties, shipments, custodyChain, audit]
     default:
       return [dashboard, shipments]
   }
 }
 
 function selectedKey(pathname: string): string {
+  if (pathname.startsWith('/tracking-map')) return '/tracking-map'
+  if (pathname.startsWith('/alerts')) return '/alerts'
   if (pathname.startsWith('/ports')) return '/ports'
   if (pathname.startsWith('/parties')) return '/parties'
   if (pathname.startsWith('/shipments')) return '/shipments'
   if (pathname.startsWith('/custody')) return pathname.startsWith('/custody/transfer') ? '/custody/transfer' : '/custody/chain'
-  if (pathname.startsWith('/analytics')) return '/analytics/route-optimization'
+  if (pathname === '/analytics') return '/analytics'
+  if (pathname.startsWith('/analytics/route-optimization')) return '/analytics/route-optimization'
+  if (pathname.startsWith('/analytics')) return '/analytics'
   if (pathname.startsWith('/audit-alerts')) return '/audit-alerts'
   return pathname
 }

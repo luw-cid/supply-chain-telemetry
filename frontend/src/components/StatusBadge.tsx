@@ -16,7 +16,7 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
 
   return (
     <Tag
-      bordered={false}
+      variant="filled"
       style={{
         color: '#111827',
         backgroundColor: config.color,

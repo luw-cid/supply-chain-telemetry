@@ -63,7 +63,7 @@ export default function ShipmentsPage() {
   const pageTitleCls = isDark ? '!m-0 !text-slate-100' : '!m-0 !text-slate-900'
 
   return (
-    <Card className="dashboard-card" bodyStyle={{ padding: 0 }}>
+    <Card className="dashboard-card" styles={{ body: { padding: 0 } }}>
       {isOwner && !user?.partyId && (
         <div className="px-4 pt-4">
           <Typography.Paragraph type="warning" className="!mb-0">

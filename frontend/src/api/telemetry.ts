@@ -12,7 +12,10 @@ export interface TelemetryLogsResult {
   logs: {
     timestamp: string
     device_id: string | null
-    location: { lat?: number; lng?: number; label?: string } | null
+    location:
+      | { lat?: number; lng?: number; label?: string }
+      | { type?: 'Point'; coordinates?: [number, number]; label?: string }
+      | null
     temp: number
     humidity: number | null
   }[]
@@ -28,7 +31,29 @@ export async function getTelemetryLogs(
     data: { shipment_id: string; logs: TelemetryLogsResult['logs'] }
     pagination: TelemetryLogsResult['pagination']
   }>(`/api/shipments/${shipmentId}/telemetry/logs`, { params })
-  return { logs: data.data.logs, pagination: data.pagination }
+  const logs = (data.data.logs ?? []).map((l) => {
+    const raw = l.location as unknown
+    if (raw && typeof raw === 'object' && 'coordinates' in (raw as any)) {
+      const coords = (raw as { coordinates?: unknown }).coordinates
+      if (Array.isArray(coords) && coords.length === 2) {
+        const lng = Number(coords[0])
+        const lat = Number(coords[1])
+        if (Number.isFinite(lng) && Number.isFinite(lat)) {
+          return {
+            ...l,
+            location: {
+              lng,
+              lat,
+              label: (raw as any).label,
+            },
+          }
+        }
+      }
+    }
+    return l
+  })
+
+  return { logs, pagination: data.pagination }
 }
 
 export interface TraceRouteResponse {

@@ -49,7 +49,7 @@ export default function AuditAlertsPage() {
   const monoCls = isDark ? 'text-slate-400 text-xs font-mono' : 'text-slate-600 text-xs font-mono'
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
+    <Space orientation="vertical" size={16} className="w-full">
       <Typography.Title level={3} className={titleCls}>
         Cảnh báo & Kiểm toán
       </Typography.Title>
@@ -61,7 +61,7 @@ export default function AuditAlertsPage() {
             key: 'alarms',
             label: 'Cảnh báo',
             children: (
-              <Card className="dashboard-card" bodyStyle={{ padding: 0 }}>
+              <Card className="dashboard-card" styles={{ body: { padding: 0 } }}>
                 <div className="p-4 flex flex-wrap gap-3 items-center">
                   <Typography.Text className={mutedCls}>Lọc thời gian</Typography.Text>
                   <DatePicker.RangePicker
@@ -99,7 +99,7 @@ export default function AuditAlertsPage() {
             key: 'audit',
             label: 'Kiểm toán',
             children: (
-              <Card className="dashboard-card" bodyStyle={{ padding: 0 }}>
+              <Card className="dashboard-card" styles={{ body: { padding: 0 } }}>
                 <div className="p-4 flex flex-wrap gap-3 items-center">
                   <Typography.Text className={mutedCls}>Lọc thời gian</Typography.Text>
                   <DatePicker.RangePicker

@@ -182,6 +182,7 @@ async function listShipmentsWithDisplay(opts = {}) {
     `SELECT
       s.ShipmentID,
       s.Status,
+      s.LastTelemetryStatus,
       s.WeightKg,
       s.OriginPortCode,
       s.DestinationPortCode,

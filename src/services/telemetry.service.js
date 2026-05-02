@@ -1,6 +1,6 @@
 const telemetryRepository = require('../repositories/telemetry.repository');
 const AppError = require('../utils/app-error');
-const pool = require('../configs/sql.config');
+const { pool } = require('../configs/sql.config');
 
 // ============================================================================
 // TELEMETRY SERVICE

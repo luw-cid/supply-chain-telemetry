@@ -61,7 +61,7 @@ export default function DashboardPage() {
           <Alert
             type="warning"
             showIcon
-            message="Chưa gán PartyID"
+            title="Chưa gán PartyID"
             description="Liên hệ quản trị để gán đơn vị (Party) — sau đó bạn mới thấy lô hàng liên quan."
           />
         </Col>
@@ -71,7 +71,7 @@ export default function DashboardPage() {
           <Statistic
             title={<span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Tổng lô đang theo dõi</span>}
             value={metrics.total}
-            valueStyle={{ color: isDark ? '#e2e8f0' : '#0f172a' }}
+            styles={{ content: { color: isDark ? '#e2e8f0' : '#0f172a' } }}
           />
         </Card>
       </Col>
@@ -80,7 +80,7 @@ export default function DashboardPage() {
           <Statistic
             title={<span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Lô NORMAL</span>}
             value={metrics.normal}
-            valueStyle={{ color: '#22c55e' }}
+            styles={{ content: { color: '#22c55e' } }}
           />
         </Card>
       </Col>
@@ -89,7 +89,7 @@ export default function DashboardPage() {
           <Statistic
             title={<span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Lô ALARM</span>}
             value={metrics.alarm}
-            valueStyle={{ color: '#ef4444' }}
+            styles={{ content: { color: '#ef4444' } }}
           />
         </Card>
       </Col>
@@ -112,7 +112,7 @@ export default function DashboardPage() {
               )}
             </span>
           }
-          bodyStyle={{ padding: 0 }}
+          styles={{ body: { padding: 0 } }}
         >
           {shipmentsQ.isLoading ? (
             <Typography.Text className={isDark ? 'text-slate-500 p-4 block' : 'text-slate-600 p-4 block'}>
@@ -133,7 +133,7 @@ export default function DashboardPage() {
             title={
               <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>Sự cố cần xử lý (OPEN)</span>
             }
-            bodyStyle={{ padding: 0 }}
+            styles={{ body: { padding: 0 } }}
           >
             <Table
               loading={alarmsQ.isLoading}

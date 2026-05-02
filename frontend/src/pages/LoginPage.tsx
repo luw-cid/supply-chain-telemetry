@@ -44,7 +44,7 @@ export default function LoginPage() {
           Supply Chain Telemetry
         </Typography.Paragraph>
         {err && (
-          <Alert type="error" message={err} className="mb-4" showIcon closable onClose={() => setErr(null)} />
+          <Alert type="error" title={err} className="mb-4" showIcon closable onClose={() => setErr(null)} />
         )}
         <Form
           layout="vertical"

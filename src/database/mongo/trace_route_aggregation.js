@@ -144,9 +144,12 @@ async function traceRouteAggregation(shipmentId, tempThreshold, maxPoints = 1000
       {
         $match: {
           $expr: {
-            $eq: [
-              { $mod: ['$rowNum', sampleEvery] },
-              0
+            // Luôn giữ điểm đầu tiên (rowNum=1) và điểm cuối (rowNum=totalPoints)
+            // để route không bị mất điểm xuất phát / điểm hiện tại.
+            $or: [
+              { $eq: ['$rowNum', 1] },
+              { $eq: ['$rowNum', totalPoints] },
+              { $eq: [{ $mod: ['$rowNum', sampleEvery] }, 0] }
             ]
           }
         }

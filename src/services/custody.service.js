@@ -17,6 +17,7 @@
 
 const custodyRepository = require('../repositories/custody.repository');
 const AppError = require('../utils/app-error');
+const trackingEventsService = require('./tracking_events.service');
 
 // ── Helpers lỗi nhất quán theo pattern của codebase ──────────────────────────
 
@@ -148,6 +149,20 @@ async function transferOwnership(shipmentId, body) {
   // ── 4. Xử lý kết quả ────────────────────────────────────────────────────
   if (!spSuccess) {
     throw mapSpMessageToError(spMessage);
+  }
+
+  // Create tracking marker event (Option A) derived from Shipments.CurrentPortCode/CurrentLocation.
+  // Best-effort: marker creation should not fail custody transfer.
+  try {
+    await trackingEventsService.recordCustodyTransferMarker({
+      shipmentId: String(shipmentId).trim(),
+      fromPartyId: String(fromPartyId).trim(),
+      toPartyId: String(toPartyId).trim(),
+      handoverPortCode: String(handoverPortCode).trim(),
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[TrackingEvents] Failed to record custody marker:', e?.message || e);
   }
 
   return {

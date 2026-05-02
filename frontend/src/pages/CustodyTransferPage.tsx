@@ -110,13 +110,13 @@ export default function CustodyTransferPage() {
   const mutedCls = isDark ? 'text-slate-400' : 'text-slate-600'
 
   return (
-    <Space direction="vertical" size={16} className="w-full max-w-3xl">
+    <Space orientation="vertical" size={16} className="w-full max-w-3xl">
       <Typography.Title level={3} className={titleCls}>
         Bàn giao pháp lý (Custody transfer)
       </Typography.Title>
 
       <Card className="dashboard-card">
-        <Space direction="vertical" className="w-full" size={12}>
+        <Space orientation="vertical" className="w-full" size={12}>
           <Typography.Text className={mutedCls}>Chọn lô hàng</Typography.Text>
           <Select
             showSearch
@@ -138,7 +138,7 @@ export default function CustodyTransferPage() {
         <Alert
           type="error"
           showIcon
-          message="Không thể bàn giao lô hàng đang trong trạng thái ALARM"
+          title="Không thể bàn giao lô hàng đang trong trạng thái ALARM"
           description="Backend sẽ từ chối (409). Hãy xử lý alarm trước."
         />
       )}
@@ -148,7 +148,7 @@ export default function CustodyTransferPage() {
           type="warning"
           showIcon
           className="max-w-3xl"
-          message="Không tải được chuỗi sở hữu để gợi ý bên giao"
+          title="Không tải được chuỗi sở hữu để gợi ý bên giao"
           description="Chọn thủ công fromPartyId (phải trùng chủ sở hữu hiện tại) hoặc kiểm tra dữ liệu Ownership / đã cập nhật SP trên DB chưa."
         />
       )}
@@ -208,7 +208,10 @@ export default function CustodyTransferPage() {
             <Form.Item name="handoverNotes" label="Ghi chú">
               <Input.TextArea rows={3} />
             </Form.Item>
-            <Form.Item label="Chữ ký số (file → base64)" name="handoverSignature">
+            <Form.Item name="handoverSignature" hidden>
+              <Input />
+            </Form.Item>
+            <Form.Item label="Chữ ký số (file → base64)">
               <Upload
                 maxCount={1}
                 beforeUpload={(file) => {
