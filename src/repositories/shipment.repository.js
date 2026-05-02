@@ -146,9 +146,6 @@ async function findShipmentRouteById(shipmentId) {
     .lean();
 }
 
-/**
- * @param {{ status?: string, search?: string, page?: number, limit?: number, partyScopeId?: string }} opts
- */
 async function listShipmentsWithDisplay(opts = {}) {
   const page = Math.max(parseInt(String(opts.page), 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(String(opts.limit), 10) || 20, 1), 100);
@@ -218,6 +215,27 @@ async function listCargoProfilesForSelect() {
   return rows;
 }
 
+async function updateShipmentStatus(shipmentId, newStatus) {
+  const [result] = await pool.query(
+    'UPDATE Shipments SET Status = ? WHERE ShipmentID = ?',
+    [newStatus, shipmentId]
+  );
+  return result;
+}
+
+async function clearShipmentAlarm(shipmentId) {
+  const [result] = await pool.query(
+    `UPDATE Shipments
+     SET Status = 'NORMAL',
+         LastTelemetryStatus = 'OK',
+         AlarmAtUTC = NULL,
+         AlarmReason = NULL
+     WHERE ShipmentID = ?`,
+    [shipmentId]
+  );
+  return result;
+}
+
 module.exports = {
   findShipmentById,
   findCargoProfileById,
@@ -229,4 +247,6 @@ module.exports = {
   findShipmentRouteById,
   listShipmentsWithDisplay,
   listCargoProfilesForSelect,
+  updateShipmentStatus,
+  clearShipmentAlarm,
 };

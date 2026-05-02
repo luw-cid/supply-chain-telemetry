@@ -1,4 +1,5 @@
 const shipmentRepository = require('../repositories/shipment.repository');
+const auditRepository = require('../repositories/audit.repository');
 const AppError = require('../utils/app-error');
 
 function buildShipmentId() {
@@ -144,8 +145,88 @@ async function listShipments(query = {}, access = {}) {
   });
 }
 
+async function updateShipmentStatus(shipmentId, newStatus, changedBy) {
+  if (!shipmentId) {
+    throw AppError.badRequest('ShipmentID is required');
+  }
+
+  const validStatuses = ['NORMAL', 'IN_TRANSIT', 'COMPLETED'];
+  const status = String(newStatus).toUpperCase();
+  if (!validStatuses.includes(status)) {
+    throw AppError.badRequest(`Invalid status. Allowed: ${validStatuses.join(', ')}`);
+  }
+
+  const shipment = await shipmentRepository.findShipmentDetailsById(shipmentId);
+  if (!shipment) {
+    throw AppError.notFound(`Shipment ${shipmentId} not found`);
+  }
+
+  if (shipment.Status === 'ALARM' && status !== 'NORMAL') {
+    throw AppError.conflict(`Cannot change status from ALARM to ${status}. Resolve alarm first.`);
+  }
+
+  const oldStatus = shipment.Status;
+
+  await shipmentRepository.updateShipmentStatus(shipmentId, status);
+
+  await auditRepository.insertAuditLog({
+    tableName: 'Shipments',
+    operation: 'UPDATE',
+    recordId: shipmentId,
+    oldValue: { Status: oldStatus },
+    newValue: { Status: status },
+    changedBy,
+  });
+
+  return { ShipmentID: shipmentId, OldStatus: oldStatus, NewStatus: status };
+}
+
+async function clearAlarm(shipmentId, changedBy) {
+  if (!shipmentId) {
+    throw AppError.badRequest('ShipmentID is required');
+  }
+
+  const shipment = await shipmentRepository.findShipmentDetailsById(shipmentId);
+  if (!shipment) {
+    throw AppError.notFound(`Shipment ${shipmentId} not found`);
+  }
+
+  if (shipment.Status !== 'ALARM') {
+    throw AppError.conflict(`Shipment ${shipmentId} is not in ALARM status`);
+  }
+
+  await shipmentRepository.clearShipmentAlarm(shipmentId);
+
+  await auditRepository.insertAuditLog({
+    tableName: 'Shipments',
+    operation: 'UPDATE',
+    recordId: shipmentId,
+    oldValue: {
+      Status: 'ALARM',
+      AlarmReason: shipment.AlarmReason,
+      LastTelemetryStatus: 'VIOLATION',
+    },
+    newValue: {
+      Status: 'NORMAL',
+      AlarmReason: null,
+      LastTelemetryStatus: 'OK',
+    },
+    changedBy,
+  });
+
+  return {
+    ShipmentID: shipmentId,
+    Status: 'NORMAL',
+    AlarmAtUTC: null,
+    AlarmReason: null,
+    LastTelemetryStatus: 'OK',
+  };
+}
+
 module.exports = {
   createShipment,
   getShipmentDetails,
   listShipments,
+  updateShipmentStatus,
+  clearAlarm,
 };

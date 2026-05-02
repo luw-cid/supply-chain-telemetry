@@ -96,10 +96,57 @@ async function routeOptimizationController(req, res, next) {
 	}
 }
 
+async function exportTelemetryCsvController(req, res, next) {
+	try {
+		const { shipmentId, startDate, endDate } = req.query;
+
+		if (!shipmentId) {
+			return res.status(400).json({
+				success: false,
+				error: 'INVALID_INPUT',
+				message: 'shipmentId is required'
+			});
+		}
+
+		const csv = await telemetryService.exportTelemetryCsv(shipmentId, { startDate, endDate });
+
+		res.setHeader('Content-Type', 'text/csv');
+		res.setHeader('Content-Disposition', `attachment; filename="telemetry_${shipmentId}.csv"`);
+		res.status(200).send(csv);
+	} catch (error) {
+		next(error);
+	}
+}
+
+async function aggregateTelemetryController(req, res, next) {
+	try {
+		const { shipmentId, interval, startDate, endDate } = req.query;
+
+		if (!shipmentId) {
+			return res.status(400).json({
+				success: false,
+				error: 'INVALID_INPUT',
+				message: 'shipmentId is required'
+			});
+		}
+
+		const result = await telemetryService.aggregateTelemetry(shipmentId, {
+			interval: interval || 'hour',
+			startDate,
+			endDate,
+		});
+
+		res.status(200).json({ success: true, data: result });
+	} catch (error) {
+		next(error);
+	}
+}
+
 module.exports = {
 	ingestTelemetryController,
 	getTelemetryLogsController,
 	traceRouteController,
 	routeOptimizationController,
+	exportTelemetryCsvController,
+	aggregateTelemetryController,
 };
-

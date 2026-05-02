@@ -7,7 +7,9 @@ import {
   DeploymentUnitOutlined,
   EnvironmentOutlined,
   LogoutOutlined,
+  MobileOutlined,
   MoonOutlined,
+  SettingOutlined,
   SunOutlined,
   SwapOutlined,
   TeamOutlined,
@@ -35,14 +37,16 @@ function buildMenuItems(role: string | undefined): MenuProps['items'] {
   const custodyChain = { key: '/custody/chain', icon: <ApartmentOutlined />, label: 'Chuỗi sở hữu' }
   const routeOpt = { key: '/analytics/route-optimization', icon: <BarChartOutlined />, label: 'Phân tích lộ trình' }
   const audit = { key: '/audit-alerts', icon: <AlertOutlined />, label: 'Cảnh báo & Kiểm toán' }
+  const devices = { key: '/devices', icon: <MobileOutlined />, label: 'Thiết bị IoT' }
+  const telemetry = { key: '/telemetry', icon: <SettingOutlined />, label: 'Telemetry' }
 
   switch (role) {
     case 'OWNER':
       return [dashboard, shipments]
     case 'ADMIN':
-      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, audit]
+      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, devices, telemetry, audit]
     case 'LOGISTICS':
-      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt]
+      return [dashboard, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, devices, telemetry]
     case 'AUDITOR':
       return [dashboard, parties, shipments, custodyChain, audit]
     default:
@@ -57,6 +61,8 @@ function selectedKey(pathname: string): string {
   if (pathname.startsWith('/custody')) return pathname.startsWith('/custody/transfer') ? '/custody/transfer' : '/custody/chain'
   if (pathname.startsWith('/analytics')) return '/analytics/route-optimization'
   if (pathname.startsWith('/audit-alerts')) return '/audit-alerts'
+  if (pathname.startsWith('/devices')) return '/devices'
+  if (pathname.startsWith('/telemetry')) return '/telemetry'
   return pathname
 }
 

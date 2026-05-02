@@ -3,6 +3,8 @@ const {
 	listShipmentsController,
 	createShipmentController,
 	getShipmentDetailsController,
+	updateShipmentStatusController,
+	clearAlarmController,
 } = require('../controllers/shipment.controller');
 const {
 	getTelemetryLogsController,
@@ -15,7 +17,9 @@ router.get('/', authenticate, listShipmentsController);
 router.post('/', authenticate, authorizeRoles('ADMIN'), createShipmentController);
 router.get('/:id', authenticate, getShipmentDetailsController);
 
-// GET /api/v1/shipments/:id/telemetry/logs
+router.patch('/:id/status', authenticate, authorizeRoles('ADMIN', 'LOGISTICS'), updateShipmentStatusController);
+router.post('/:id/clear-alarm', authenticate, authorizeRoles('ADMIN', 'LOGISTICS'), clearAlarmController);
+
 router.get('/:id/telemetry/logs', authenticate, getTelemetryLogsController);
 
 module.exports = router;

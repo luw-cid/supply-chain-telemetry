@@ -52,9 +52,26 @@ export async function getTraceRoute(shipmentId: string, maxPoints?: number) {
 export async function getRouteOptimization(origin: string, destination: string, extra?: Record<string, string>) {
   const { data } = await api.get('/api/v1/analytics/route-optimization', {
     params: { origin, destination, ...extra },
-    // Route optimization may return 4xx for business outcomes (e.g. no route found).
-    // Let caller handle payload instead of treating it as transport failure.
     validateStatus: (status) => status < 500,
   })
   return data
+}
+
+export async function exportTelemetryCsv(shipmentId: string, params?: { startDate?: string; endDate?: string }) {
+  const { data } = await api.get('/api/v1/telemetry/export', {
+    params: { shipmentId, ...params },
+    responseType: 'blob',
+  })
+  return data
+}
+
+export async function getAggregatedTelemetry(
+  shipmentId: string,
+  params: { interval?: string; startDate?: string; endDate?: string } = {},
+) {
+  const { data } = await api.get<{ success: boolean; data: Record<string, unknown>[] }>(
+    '/api/v1/telemetry/aggregate',
+    { params: { shipmentId, ...params } },
+  )
+  return data.data
 }

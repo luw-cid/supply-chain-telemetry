@@ -59,3 +59,18 @@ export async function createShipment(body: CreateShipmentPayload) {
   const { data } = await api.post<{ success: boolean; data: unknown }>('/api/shipments', body)
   return data.data
 }
+
+export async function updateShipmentStatus(shipmentId: string, status: string) {
+  const { data } = await api.patch<{ success: boolean; data: unknown }>(
+    `/api/shipments/${shipmentId}/status`,
+    { status },
+  )
+  return data.data
+}
+
+export async function clearAlarm(shipmentId: string) {
+  const { data } = await api.post<{ success: boolean; data: unknown }>(
+    `/api/shipments/${shipmentId}/clear-alarm`,
+  )
+  return data.data
+}

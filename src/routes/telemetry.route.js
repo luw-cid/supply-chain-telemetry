@@ -1,20 +1,22 @@
 const express = require('express');
 const { 
   ingestTelemetryController,
+  getTelemetryLogsController,
   traceRouteController,
-  routeOptimizationController
+  routeOptimizationController,
+  exportTelemetryCsvController,
+  aggregateTelemetryController,
 } = require('../controllers/telemetry.controller');
+const { authenticate, authorizeRoles } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
-// POST /api/v1/telemetry/ingest
 router.post('/ingest', ingestTelemetryController);
 
-// GET /api/v1/analytics/trace-route/:shipmentId - Trace actual route of shipment
 router.get('/v1/analytics/trace-route/:shipmentId', traceRouteController);
-
-// GET /api/v1/analytics/route-optimization - Find optimal routes between ports
 router.get('/v1/analytics/route-optimization', routeOptimizationController);
 
-module.exports = router;
+router.get('/v1/telemetry/export', authenticate, authorizeRoles('ADMIN', 'LOGISTICS'), exportTelemetryCsvController);
+router.get('/v1/telemetry/aggregate', authenticate, aggregateTelemetryController);
 
+module.exports = router;

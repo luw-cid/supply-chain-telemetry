@@ -2,38 +2,11 @@ const telemetryRepository = require('../repositories/telemetry.repository');
 const AppError = require('../utils/app-error');
 const pool = require('../configs/sql.config');
 
-// ============================================================================
-// TELEMETRY SERVICE
-// ============================================================================
-// Business logic cho Telemetry & IoT Monitoring
-// ============================================================================
-
-/**
- * Lấy telemetry logs của một shipment
- *
- * Logic:
- * 1. Validate shipmentId tồn tại trong MySQL
- * 2. Query MongoDB telemetry_points với filter & pagination
- * 3. Format response bao gồm temperature, humidity, location, timestamp
- *
- * @param {string} shipmentId - ID của shipment
- * @param {Object} queryParams - Query parameters từ HTTP request
- * @param {string} [queryParams.startDate] - ISO date string lọc từ ngày
- * @param {string} [queryParams.endDate]   - ISO date string lọc đến ngày
- * @param {number} [queryParams.limit]     - Số bản ghi mỗi trang (default 50, max 200)
- * @param {number} [queryParams.page]      - Số trang (1-indexed, default 1)
- * @param {string} [queryParams.sort]      - 'asc' | 'desc' (default 'desc')
- * @returns {Promise<Object>} Response object
- */
 async function getTelemetryLogs(shipmentId, queryParams = {}) {
-	// ========================================================================
-	// STEP 1: Validate shipmentId
-	// ========================================================================
 	if (!shipmentId || typeof shipmentId !== 'string' || shipmentId.trim() === '') {
 		throw AppError.badRequest('ShipmentID is required');
 	}
 
-	// Kiểm tra shipment tồn tại trong MySQL
 	const [rows] = await pool.execute(
 		'SELECT ShipmentID, CargoProfileID FROM Shipments WHERE ShipmentID = ?',
 		[shipmentId]
@@ -43,15 +16,11 @@ async function getTelemetryLogs(shipmentId, queryParams = {}) {
 		throw AppError.notFound(`Shipment '${shipmentId}' not found`);
 	}
 
-	// ========================================================================
-	// STEP 2: Parse & validate query params
-	// ========================================================================
 	const limit = Math.min(Math.max(parseInt(queryParams.limit, 10) || 50, 1), 200);
 	const page = Math.max(parseInt(queryParams.page, 10) || 1, 1);
 	const skip = (page - 1) * limit;
 	const sort = queryParams.sort === 'asc' ? 'asc' : 'desc';
 
-	// Validate dates nếu có
 	let startDate = null;
 	let endDate = null;
 
@@ -73,9 +42,6 @@ async function getTelemetryLogs(shipmentId, queryParams = {}) {
 		throw AppError.badRequest('startDate must be before endDate');
 	}
 
-	// ========================================================================
-	// STEP 3: Query MongoDB
-	// ========================================================================
 	const { logs, total } = await telemetryRepository.getTelemetryLogs(shipmentId, {
 		startDate,
 		endDate,
@@ -84,9 +50,6 @@ async function getTelemetryLogs(shipmentId, queryParams = {}) {
 		sort,
 	});
 
-	// ========================================================================
-	// STEP 4: Format response
-	// ========================================================================
 	const totalPages = Math.ceil(total / limit);
 
 	return {
@@ -112,6 +75,43 @@ async function getTelemetryLogs(shipmentId, queryParams = {}) {
 	};
 }
 
+async function exportTelemetryCsv(shipmentId, { startDate, endDate } = {}) {
+	if (!shipmentId) {
+		throw AppError.badRequest('ShipmentID is required');
+	}
+
+	const logs = await telemetryRepository.getAllTelemetryLogs(shipmentId, {
+		startDate: startDate ? new Date(startDate) : null,
+		endDate: endDate ? new Date(endDate) : null,
+	});
+
+	const header = 'timestamp,device_id,latitude,longitude,temp,humidity\n';
+	const rows = logs.map((log) => {
+		const lat = log.location?.coordinates?.[1] ?? log.location?.lat ?? '';
+		const lng = log.location?.coordinates?.[0] ?? log.location?.lng ?? '';
+		return `${log.t},${log.meta?.device_id || ''},${lat},${lng},${log.temp},${log.humidity ?? ''}`;
+	}).join('\n');
+
+	return header + rows;
+}
+
+async function aggregateTelemetry(shipmentId, { interval = 'hour', startDate, endDate } = {}) {
+	if (!shipmentId) {
+		throw AppError.badRequest('ShipmentID is required');
+	}
+
+	const validIntervals = ['minute', 'hour', 'day', 'week', 'month'];
+	const aggInterval = validIntervals.includes(interval) ? interval : 'hour';
+
+	return telemetryRepository.aggregateTelemetry(shipmentId, {
+		interval: aggInterval,
+		startDate: startDate ? new Date(startDate) : null,
+		endDate: endDate ? new Date(endDate) : null,
+	});
+}
+
 module.exports = {
 	getTelemetryLogs,
+	exportTelemetryCsv,
+	aggregateTelemetry,
 };

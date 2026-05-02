@@ -2,6 +2,8 @@ const {
   createShipment,
   getShipmentDetails,
   listShipments,
+  updateShipmentStatus,
+  clearAlarm,
 } = require('../services/shipment.service');
 
 async function listShipmentsController(req, res, next) {
@@ -51,8 +53,36 @@ async function getShipmentDetailsController(req, res, next) {
   }
 }
 
+async function updateShipmentStatusController(req, res, next) {
+  try {
+    const { status } = req.body;
+    const data = await updateShipmentStatus(
+      req.params.id,
+      status,
+      req.user.sub
+    );
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function clearAlarmController(req, res, next) {
+  try {
+    const data = await clearAlarm(
+      req.params.id,
+      req.user.sub
+    );
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listShipmentsController,
   createShipmentController,
   getShipmentDetailsController,
+  updateShipmentStatusController,
+  clearAlarmController,
 };

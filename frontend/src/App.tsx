@@ -5,6 +5,7 @@ import AuditAlertsPage from './pages/AuditAlertsPage'
 import CustodyTransferPage from './pages/CustodyTransferPage'
 import ChainCustodyPage from './pages/ChainCustodyPage'
 import DashboardPage from './pages/DashboardPage'
+import DevicesPage from './pages/DevicesPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import RouteOptimizationPage from './pages/RouteOptimizationPage'
@@ -12,6 +13,7 @@ import PartiesPage from './pages/PartiesPage'
 import PortsPage from './pages/PortsPage'
 import ShipmentDetailPage from './pages/ShipmentDetailPage'
 import ShipmentsPage from './pages/ShipmentsPage'
+import TelemetryManagementPage from './pages/TelemetryManagementPage'
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
             <Route path="/custody/chain" element={<ChainCustodyPage />} />
             <Route path="/analytics/route-optimization" element={<RouteOptimizationPage />} />
             <Route path="/audit-alerts" element={<AuditAlertsPage />} />
+            <Route path="/devices" element={<DevicesPage />} />
+            <Route path="/telemetry" element={<TelemetryManagementPage />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

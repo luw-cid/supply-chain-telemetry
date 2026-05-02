@@ -6,6 +6,7 @@ const custodyRouter  = require('./custody.route');
 const alarmsRouter   = require('./alarms.route');
 const auditRouter    = require('./audit.route');
 const referenceRouter = require('./reference.route');
+const deviceRouter   = require('./device.route');
 
 const router = express.Router();
 
@@ -17,6 +18,7 @@ router.use('/api/reference', referenceRouter);
 router.use('/api/v1/shipments', custodyRouter);
 router.use('/api/v1/alarms', alarmsRouter);
 router.use('/api/v1/audit', auditRouter);
+router.use('/api/v1/devices', deviceRouter);
 
 module.exports = router;
 

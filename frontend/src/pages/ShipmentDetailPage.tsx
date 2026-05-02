@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SwapOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Descriptions, Pagination, Space, Tabs, Typography } from 'antd'
+import { Alert, Button, Card, Descriptions, Pagination, Select, Space, Tabs, Typography, message } from 'antd'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getOwnershipHistory } from '../api/custody'
-import { getShipment } from '../api/shipments'
+import { clearAlarm as clearAlarmApi, getShipment, updateShipmentStatus } from '../api/shipments'
 import { getTelemetryLogs, getTraceRoute } from '../api/telemetry'
 import CustodyTimeline from '../components/CustodyTimeline'
 import ShipmentStatusBadge from '../components/ShipmentStatusBadge'
@@ -18,7 +18,9 @@ export default function ShipmentDetailPage() {
   const { isDark } = useThemeMode()
   const { user } = useAuth()
   const { shipmentId = '' } = useParams()
+  const queryClient = useQueryClient()
   const canCustodyTransfer = user?.role === 'ADMIN' || user?.role === 'LOGISTICS'
+  const canUpdateStatus = user?.role === 'ADMIN' || user?.role === 'LOGISTICS'
   const [telPage, setTelPage] = useState(1)
   const [telLimit] = useState(100)
 
@@ -59,6 +61,24 @@ export default function ShipmentDetailPage() {
     return mapOwnershipChainToEvents(chain)
   }, [custodyQ.data])
 
+  const statusMut = useMutation({
+    mutationFn: (newStatus: string) => updateShipmentStatus(shipmentId, newStatus),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shipment', shipmentId] })
+      message.success('Cập nhật trạng thái thành công')
+    },
+    onError: (err: Error) => message.error(err.message),
+  })
+
+  const clearAlarmMut = useMutation({
+    mutationFn: () => clearAlarmApi(shipmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shipment', shipmentId] })
+      message.success('Đã giải quyết alarm, shipment trở về NORMAL')
+    },
+    onError: (err: Error) => message.error(err.message),
+  })
+
   if (!shipmentId) return null
 
   const labelCls = isDark ? '!text-slate-400' : '!text-slate-600'
@@ -96,6 +116,24 @@ export default function ShipmentDetailPage() {
             {canCustodyTransfer && status === 'ALARM' && (
               <Typography.Text type="secondary">ALARM: xử lý cảnh báo trước khi bàn giao</Typography.Text>
             )}
+            {canUpdateStatus && status === 'ALARM' && (
+              <Button type="primary" danger loading={clearAlarmMut.isPending} onClick={() => clearAlarmMut.mutate()}>
+                Giải quyết Alarm
+              </Button>
+            )}
+            {canUpdateStatus && status !== 'ALARM' && (
+              <Select
+                value={status}
+                style={{ width: 160 }}
+                onChange={(v) => statusMut.mutate(v)}
+                loading={statusMut.isPending}
+                options={[
+                  { value: 'NORMAL', label: 'NORMAL' },
+                  { value: 'IN_TRANSIT', label: 'IN_TRANSIT' },
+                  ...(status === 'IN_TRANSIT' ? [{ value: 'COMPLETED', label: 'COMPLETED' }] : []),
+                ]}
+              />
+            )}
             <ShipmentStatusBadge status={status} />
           </Space>
         </div>
@@ -105,6 +143,11 @@ export default function ShipmentDetailPage() {
             <Descriptions.Item label="Cảng đến">{String(shipment.DestinationPortCode)}</Descriptions.Item>
             <Descriptions.Item label="Trọng lượng">{String(shipment.WeightKg)} kg</Descriptions.Item>
             <Descriptions.Item label="CargoProfile">{String(shipment.CargoProfileID)}</Descriptions.Item>
+            {Boolean(shipment.AlarmReason) && (
+              <Descriptions.Item label="Lý do Alarm">
+                <Typography.Text type="danger">{String(shipment.AlarmReason)}</Typography.Text>
+              </Descriptions.Item>
+            )}
           </Descriptions>
         )}
       </Card>
