@@ -23,6 +23,8 @@ export async function getOwnershipHistory(shipmentId: string, detail: 'DETAILED'
     `/api/v1/shipments/${shipmentId}/ownership-history`,
     { params: { detail } },
   )
+  console.log('📥 [API Response] Full response:', JSON.stringify(data, null, 2))
+  console.log('📥 [API Response] Chain item 0:', JSON.stringify(data.data?.chain?.[0], null, 2))
   return data.data
 }
 

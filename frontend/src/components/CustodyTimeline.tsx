@@ -21,7 +21,7 @@ export default function CustodyTimeline({ items }: CustodyTimelineProps) {
     <Timeline
       items={items.map((item) => ({
         color: '#3b82f6',
-        children: (
+        content: (
           <div className="mb-4">
             <Typography.Text className={ownerCls}>{item.owner}</Typography.Text>
             <Typography.Text className={metaCls}>{item.port}</Typography.Text>

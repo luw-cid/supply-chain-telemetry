@@ -211,6 +211,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
   let rows;
   try {
     rows = await custodyRepository.fetchOwnershipHistory(String(shipmentId).trim(), level);
+    console.log('🔍 [Service] Raw SP result rows:', JSON.stringify(rows, null, 2));
 
   } catch (spError) {
     // SP dùng SIGNAL SQLSTATE '45000' khi shipment không tồn tại
@@ -223,7 +224,11 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
 
   // ── 3. Xây dựng response ─────────────────────────────────────────────────
   // Chuẩn hoá tên field về camelCase trước khi trả về client
-  const chain = rows.map((row) => {
+  // FIX: mysql2 stored procedure returns array of result sets
+  // rows[0] = actual data, rows[1] = metadata
+  const actualRows = Array.isArray(rows[0]) ? rows[0] : rows;
+  
+  const chain = actualRows.map((row, idx) => {
     if (level === 'SUMMARY') {
       return {
         transferStep: row.TransferStep,
@@ -239,7 +244,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
       };
     }
     // DETAILED
-    return {
+    const mapped = {
       stepNumber: row.step_number,
       currentOwner: {
         partyId: row.current_owner_party_id,
@@ -280,6 +285,7 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
       transferSequencePath: row.transfer_sequence_path,
       chainDepth: row.chain_depth,
     };
+    return mapped;
   });
 
   return {

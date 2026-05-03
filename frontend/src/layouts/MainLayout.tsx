@@ -37,7 +37,6 @@ function buildMenuItems(role: string | undefined): MenuProps['items'] {
   const custodyTransfer = { key: '/custody/transfer', icon: <SwapOutlined />, label: 'Chuyển giao' }
   const custodyChain = { key: '/custody/chain', icon: <ApartmentOutlined />, label: 'Chuỗi sở hữu' }
   const routeOpt = { key: '/analytics/route-optimization', icon: <BarChartOutlined />, label: 'Tối ưu lộ trình' }
-  const analytics = { key: '/analytics', icon: <BarChartOutlined />, label: 'Phân tích' }
   const audit = { key: '/audit-alerts', icon: <AlertOutlined />, label: 'Cảnh báo & Kiểm toán' }
 
   switch (role) {

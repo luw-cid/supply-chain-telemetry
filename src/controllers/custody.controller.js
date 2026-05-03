@@ -83,6 +83,7 @@ async function getOwnershipHistoryController(req, res, next) {
     const detailLevel = req.query.detail || 'DETAILED';
 
     const result = await getOwnershipHistory(shipmentId, detailLevel);
+    console.log('📤 [Controller] API response:', JSON.stringify(result, null, 2));
 
     return res.status(200).json({
       success: true,

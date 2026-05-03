@@ -37,10 +37,16 @@ function pickNote(c: Record<string, unknown>): string {
 }
 
 export function mapOwnershipChainToEvents(chain: Record<string, unknown>[]): CustodyEvent[] {
-  return chain.map((c) => ({
-    time: pickTime(c),
-    owner: pickOwner(c),
-    port: pickPort(c),
-    note: pickNote(c),
-  }))
+  console.log('🔍 Raw ownership chain:', chain)
+  const events = chain.map((c) => {
+    const event = {
+      time: pickTime(c),
+      owner: pickOwner(c),
+      port: pickPort(c),
+      note: pickNote(c),
+    }
+    console.log('📝 Mapped event:', event, 'from:', c)
+    return event
+  })
+  return events
 }
