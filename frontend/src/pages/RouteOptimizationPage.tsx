@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Button, Card, Form, Select, Space, Typography, Alert, Statistic, Row, Col } from 'antd'
 import { useState } from 'react'
 import { getRouteOptimization } from '../api/telemetry'
-import { listPorts } from '../api/reference'
+import { listPorts, type PortRow } from '../api/reference'
 import { useThemeMode } from '../contexts/ThemeContext'
+import RouteOptimizationMap from '../components/RouteOptimizationMap'
 
 export default function RouteOptimizationPage() {
   const { isDark } = useThemeMode()
@@ -23,6 +24,9 @@ export default function RouteOptimizationPage() {
 
   const routes = (optQ.data as { routes?: unknown[] } | undefined)?.routes ?? []
   const success = (optQ.data as { success?: boolean } | undefined)?.success
+  const ports = portsQ.data ?? []
+
+  const portsByCode = new Map<string, PortRow>(ports.map((port) => [port.PortCode, port]))
 
   const titleCls = isDark ? '!text-slate-100' : '!text-slate-900'
 
@@ -91,8 +95,10 @@ export default function RouteOptimizationPage() {
               }
             }
             const pathStr = (r.path ?? []).join(' → ')
+            const path = (r.path ?? []).filter((code): code is string => typeof code === 'string' && portsByCode.has(code))
             return (
               <Card key={idx} className="dashboard-card" title={`Lộ trình ${idx + 1}`}>
+                {path.length > 1 ? <RouteOptimizationMap path={path} ports={ports} legs={r.legs ?? []} /> : null}
                 <Typography.Paragraph className="!text-slate-300">{pathStr || '—'}</Typography.Paragraph>
                 <Row gutter={16}>
                   <Col span={8}>

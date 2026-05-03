@@ -178,7 +178,8 @@ async function findOptimalRoutes(originPort, destinationPort, options = {}) {
             avg_hours: '$avg_hours',
             distance_km: '$distance_km',
             alarm_rate: '$alarm_rate',
-            route_type: '$route_type'
+            route_type: '$route_type',
+            route_path: '$route_path',
           },
           possible_routes: 1
         }
@@ -362,7 +363,8 @@ function reconstructPath(firstLeg, allEdges, finalEdge, destination) {
         avg_hours: previousEdge.avg_hours,
         distance_km: previousEdge.distance_km,
         alarm_rate: previousEdge.alarm_rate,
-        route_type: previousEdge.route_type
+        route_type: previousEdge.route_type,
+        route_path: previousEdge.route_path || null,
       });
 
       currentEdge = previousEdge;
@@ -376,7 +378,8 @@ function reconstructPath(firstLeg, allEdges, finalEdge, destination) {
       avg_hours: finalEdge.avg_hours,
       distance_km: finalEdge.distance_km,
       alarm_rate: finalEdge.alarm_rate,
-      route_type: finalEdge.route_type
+      route_type: finalEdge.route_type,
+      route_path: finalEdge.route_path || null,
     });
 
     // Validate path continuity

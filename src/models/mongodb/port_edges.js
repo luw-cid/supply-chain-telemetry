@@ -50,6 +50,9 @@ const portEdgesSchema = new mongoose.Schema({
 
   // Is active flag
   is_active: { type: Boolean, default: true },
+
+  // GeoJSON LineString of actual shipping route waypoints
+  route_path: { type: Object },
 });
 
 portEdgesSchema.index({ from_port: 1, to_port: 1 }, { unique: true });
