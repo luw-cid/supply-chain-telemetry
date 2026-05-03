@@ -119,8 +119,8 @@ export default function ShipmentDetailPage() {
   }
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
-      <Card className="dashboard-card" bodyStyle={{ padding: 16 }} loading={detailQ.isLoading}>
+    <Space orientation="vertical" size={16} className="w-full">
+      <Card className="dashboard-card" styles={{ body: { padding: 16 } }} loading={detailQ.isLoading}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <Typography.Text className={labelCls}>Shipment ID</Typography.Text>
@@ -158,7 +158,7 @@ export default function ShipmentDetailPage() {
       </Card>
 
       <Modal title="Cập nhật trạng thái lô hàng" open={statusModalOpen} onCancel={() => setStatusModalOpen(false)} footer={null}>
-        <Space direction="vertical" className="w-full pt-3" size={16}>
+        <Space orientation="vertical" className="w-full pt-3" size={16}>
           <div>
             <Typography.Text className={labelCls}>Trạng thái mới</Typography.Text>
             <Select
@@ -229,6 +229,66 @@ export default function ShipmentDetailPage() {
           ),
         },
       ]} />
+=======
+      <Tabs
+        defaultActiveKey="trace"
+        className="app-tabs"
+        items={[
+          {
+            key: 'trace',
+            label: 'Hành trình (Trace)',
+            children: (
+              <Card className="dashboard-card">
+                {traceQ.isLoading && <Typography.Text className={traceLoadingCls}>Đang tải trace…</Typography.Text>}
+                {traceQ.isError && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    className="mb-3"
+                    title="Chưa có dữ liệu trace hoặc lỗi API"
+                    description={(traceQ.error as Error)?.message}
+                  />
+                )}
+                {traceQ.data && <TraceRouteMap trace={traceQ.data} />}
+              </Card>
+            ),
+          },
+          {
+            key: 'telemetry',
+            label: 'Cảm biến (Telemetry)',
+            children: (
+              <Card className="dashboard-card">
+                {telQ.isError && (
+                  <Alert type="error" title="Không đọc được telemetry logs (cần JWT / dữ liệu)." className="mb-3" />
+                )}
+                <TelemetryIoTChart logs={telQ.data?.logs ?? []} tempMin={tempMin} tempMax={tempMax} />
+                <div className="mt-4 flex justify-end">
+                  <Pagination
+                    current={telPage}
+                    pageSize={telLimit}
+                    total={telQ.data?.pagination.total ?? 0}
+                    onChange={(p) => setTelPage(p)}
+                    showSizeChanger={false}
+                  />
+                </div>
+              </Card>
+            ),
+          },
+          {
+            key: 'custody',
+            label: 'Chuỗi sở hữu',
+            children: (
+              <Card className="dashboard-card">
+                {custodyQ.isError && (
+                  <Alert type="warning" title="Không tải ownership-history (kiểm tra quyền JWT)." className="mb-3" />
+                )}
+                <CustodyTimeline items={custodyEvents} />
+              </Card>
+            ),
+          },
+        ]}
+      />
+>>>>>>> origin/origin/tracking-map
     </Space>
   )
 }

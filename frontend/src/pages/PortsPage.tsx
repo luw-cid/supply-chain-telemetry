@@ -112,7 +112,7 @@ export default function PortsPage() {
   }
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
+    <Space orientation="vertical" size={16} className="w-full">
       <Card className="dashboard-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -136,7 +136,7 @@ export default function PortsPage() {
         </div>
       </Card>
 
-      <Card className="dashboard-card" bodyStyle={{ padding: 0 }}>
+      <Card className="dashboard-card" styles={{ body: { padding: 0 } }}>
         <Table<PortRow>
           rowKey="PortCode"
           loading={portsQ.isLoading}
@@ -196,7 +196,7 @@ export default function PortsPage() {
         }}
         onOk={submit}
         confirmLoading={createMut.isPending || updateMut.isPending}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" className="mt-2">
           {!editing && (

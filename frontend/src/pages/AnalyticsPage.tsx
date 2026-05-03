@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
       }
 
   const chartCard = (title: string, data: Array<{ name: string; value: number }>, color: string) => (
-    <Card className="dashboard-card h-full" bodyStyle={{ padding: 16 }}>
+    <Card className="dashboard-card h-full" styles={{ body: { padding: 16 } }}>
       <Typography.Title level={5} className={isDark ? '!text-slate-100' : '!text-slate-900'}>
         {title}
       </Typography.Title>

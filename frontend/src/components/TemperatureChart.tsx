@@ -15,6 +15,20 @@ interface TemperatureChartProps {
 }
 
 export default function TemperatureChart({ points, compact = false }: TemperatureChartProps) {
+  if (!points?.length) {
+    return (
+      <div
+        className={
+          compact
+            ? 'h-44 w-full flex items-center justify-center text-slate-500'
+            : 'h-72 w-full flex items-center justify-center text-slate-500'
+        }
+      >
+        Chưa có dữ liệu nhiệt độ
+      </div>
+    )
+  }
+
   const data = points.map((point) => ({
     time: new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     temperature: point.temperature,
@@ -22,7 +36,7 @@ export default function TemperatureChart({ points, compact = false }: Temperatur
 
   return (
     <div className={compact ? 'h-44 w-full' : 'h-72 w-full'}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={compact ? 176 : 288}>
         <LineChart data={data} margin={{ top: 8, right: 18, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
           <XAxis dataKey="time" tick={{ fill: '#9ca3af', fontSize: 12 }} stroke="#334155" />

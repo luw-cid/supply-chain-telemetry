@@ -49,7 +49,13 @@ async function ingestTelemetry(telemetryPoint) {
     } = telemetryPoint;
 
     // ── 1. Validate input ────────────────────────────────────────────────────
-    if (!shipment_id || !device_id || !location?.lng || !location?.lat || typeof temp !== 'number') {
+    if (
+        !shipment_id ||
+        !device_id ||
+        !Number.isFinite(location?.lng) ||
+        !Number.isFinite(location?.lat) ||
+        typeof temp !== 'number'
+    ) {
         throw AppError.badRequest('Missing required telemetry fields');
     }
     if (typeof shipment_id !== 'string' || shipment_id.length > 64) {

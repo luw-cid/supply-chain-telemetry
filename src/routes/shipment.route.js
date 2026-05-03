@@ -4,6 +4,7 @@ const {
 	createShipmentController,
 	getShipmentDetailsController,
 	updateShipmentStatusController,
+	getTrackingEventsController,
 } = require('../controllers/shipment.controller');
 const {
 	getTelemetryLogsController,
@@ -19,5 +20,8 @@ router.patch('/:id/status', authenticate, updateShipmentStatusController);
 
 // GET /api/v1/shipments/:id/telemetry/logs
 router.get('/:id/telemetry/logs', authenticate, getTelemetryLogsController);
+
+// GET /api/shipments/:id/tracking/events
+router.get('/:id/tracking/events', authenticate, getTrackingEventsController);
 
 module.exports = router;

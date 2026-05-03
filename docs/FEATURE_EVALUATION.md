@@ -40,8 +40,8 @@ Tài liệu này tổng hợp **các chức năng hiện có** (dựa trên code
 
 ### 1) Chức năng “có file nhưng chưa dùng / chưa nối route”
 
-- **Tracking Map page chưa được route tới**: file `frontend/src/pages/TrackingMapPage.tsx` tồn tại nhưng không thấy khai báo trong `frontend/src/App.tsx`.
-- **Một số page có nhưng không “expose”**: `frontend/src/pages/AlertsPage.tsx`, `frontend/src/pages/AnalyticsPage.tsx` xuất hiện trong repo nhưng không thấy nằm trong router hiện tại.
+- ✅ **Đã nối route cho Tracking Map**: `frontend/src/pages/TrackingMapPage.tsx` đã được khai báo trong router (`/tracking-map`) và có menu cho các role phù hợp (ADMIN/LOGISTICS/AUDITOR).
+- ✅ **Đã expose Alerts/Analytics (demo)**: `frontend/src/pages/AlertsPage.tsx` (`/alerts`) và `frontend/src/pages/AnalyticsPage.tsx` (`/analytics`) đã có route và menu.
 
 ### 2) Workflow vận hành còn thiếu (khuyến nghị ưu tiên cao)
 

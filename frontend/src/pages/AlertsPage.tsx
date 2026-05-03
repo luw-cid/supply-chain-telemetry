@@ -32,7 +32,7 @@ export default function AlertsPage() {
   }, [shipments])
 
   return (
-    <Card className="dashboard-card" bodyStyle={{ padding: 0 }}>
+    <Card className="dashboard-card" styles={{ body: { padding: 0 } }}>
       <div className="px-4 pt-4 pb-2">
         <Typography.Title level={4} className="!m-0 !text-slate-100">
           Active and Historical Alerts

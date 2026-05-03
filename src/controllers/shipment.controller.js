@@ -4,6 +4,7 @@ const {
   listShipments,
   updateShipmentStatus,
 } = require('../services/shipment.service');
+const { listTrackingEvents } = require('../services/tracking_events.service');
 
 async function listShipmentsController(req, res, next) {
   try {
@@ -69,4 +70,15 @@ module.exports = {
   createShipmentController,
   getShipmentDetailsController,
   updateShipmentStatusController,
+  getTrackingEventsController,
 };
+
+async function getTrackingEventsController(req, res, next) {
+  try {
+    const shipmentId = req.params.id;
+    const data = await listTrackingEvents(shipmentId, { limit: req.query.limit });
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}

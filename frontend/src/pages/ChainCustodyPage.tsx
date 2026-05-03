@@ -45,7 +45,7 @@ export default function ChainCustodyPage() {
   const linkCls = isDark ? 'text-sky-400 hover:text-sky-300' : 'text-sky-600 hover:text-sky-700'
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
+    <Space orientation="vertical" size={16} className="w-full">
       <Card className="dashboard-card">
         <Typography.Title level={4} className={titleCls}>
           Chuỗi sở hữu (tổng quan)

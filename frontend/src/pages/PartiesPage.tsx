@@ -121,12 +121,12 @@ export default function PartiesPage() {
   }
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
+    <Space orientation="vertical" size={16} className="w-full">
       {!seeFull && (
         <Alert
           type="info"
           showIcon
-          message="Chế độ xem hạn chế"
+          title="Chế độ xem hạn chế"
           description="Bạn đang xem các đối tác trạng thái ACTIVE (để chọn khi tạo lô). Chỉ ADMIN / LOGISTICS / AUDITOR xem đủ cột và lịch sử; chỉ ADMIN / LOGISTICS được thêm hoặc sửa."
         />
       )}
@@ -155,7 +155,7 @@ export default function PartiesPage() {
         </div>
       </Card>
 
-      <Card className="dashboard-card" bodyStyle={{ padding: 0 }}>
+      <Card className="dashboard-card" styles={{ body: { padding: 0 } }}>
         <Table<PartyListItem>
           rowKey="PartyID"
           loading={partiesQ.isLoading}
@@ -212,7 +212,7 @@ export default function PartiesPage() {
         }}
         onOk={submit}
         confirmLoading={createMut.isPending || updateMut.isPending}
-        destroyOnClose
+        destroyOnHidden
         width={520}
       >
         <Form form={form} layout="vertical" className="mt-2">
