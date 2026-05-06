@@ -49,14 +49,15 @@ async function ingestTelemetry(telemetryPoint) {
     } = telemetryPoint;
 
     // ── 1. Validate input ────────────────────────────────────────────────────
-    if (
-        !shipment_id ||
-        !device_id ||
-        !Number.isFinite(location?.lng) ||
-        !Number.isFinite(location?.lat) ||
-        typeof temp !== 'number'
-    ) {
-        throw AppError.badRequest('Missing required telemetry fields');
+    const missing = [];
+    if (!shipment_id) missing.push('shipment_id');
+    if (!device_id) missing.push('device_id');
+    if (!location || !Number.isFinite(location.lng)) missing.push('location.lng');
+    if (!location || !Number.isFinite(location.lat)) missing.push('location.lat');
+    if (typeof temp !== 'number' || !Number.isFinite(temp)) missing.push('temp');
+    if (missing.length) {
+        console.error('[SagaOrchestrator] Missing/invalid fields:', JSON.stringify({ shipment_id, device_id, location, temp }));
+        throw AppError.badRequest(`Missing required telemetry fields: ${missing.join(', ')}`);
     }
     if (typeof shipment_id !== 'string' || shipment_id.length > 64) {
         throw AppError.badRequest('shipment_id must be a string (max 64 chars)');

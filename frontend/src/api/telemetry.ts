@@ -74,6 +74,22 @@ export async function getTraceRoute(shipmentId: string, maxPoints?: number) {
   return data.data
 }
 
+export async function ingestTelemetry(params: {
+  shipment_id: string
+  device_id: string
+  timestamp?: string
+  location: { lng: number; lat: number }
+  temp: number
+  humidity?: number
+  idempotency_key?: string
+}) {
+  const { data } = await api.post<{ success: boolean; data: Record<string, unknown> }>(
+    '/api/v1/telemetry/ingest',
+    params,
+  )
+  return data
+}
+
 export async function getRouteOptimization(origin: string, destination: string, extra?: Record<string, string>) {
   const { data } = await api.get('/api/v1/analytics/route-optimization', {
     params: { origin, destination, ...extra },

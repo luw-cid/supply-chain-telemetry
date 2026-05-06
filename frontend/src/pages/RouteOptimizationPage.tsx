@@ -98,7 +98,7 @@ export default function RouteOptimizationPage() {
             const path = (r.path ?? []).filter((code): code is string => typeof code === 'string' && portsByCode.has(code))
             return (
               <Card key={idx} className="dashboard-card" title={`Lộ trình ${idx + 1}`}>
-                {path.length > 1 ? <RouteOptimizationMap path={path} ports={ports} legs={r.legs ?? []} /> : null}
+                {path.length > 1 ? <RouteOptimizationMap path={path} ports={ports} /> : null}
                 <Typography.Paragraph className="!text-slate-300">{pathStr || '—'}</Typography.Paragraph>
                 <Row gutter={16}>
                   <Col span={8}>

@@ -80,7 +80,17 @@ async function updateAlarmEvent({ alarmId, status, userId }) {
   return { alarmId, status, userId, updatedAt: now };
 }
 
+async function createAlarmEvent({ shipmentId, alarmType, severity, alarmReason, source }) {
+  const [result] = await pool.query(
+    `INSERT INTO AlarmEvents (AlarmEventID, ShipmentID, AlarmType, Severity, Status, AlarmReason, AlarmAtUTC, Source)
+     VALUES (UUID(), ?, ?, ?, 'OPEN', ?, CURRENT_TIMESTAMP(6), ?)`,
+    [shipmentId, alarmType, severity, alarmReason, source]
+  );
+  return { success: true };
+}
+
 module.exports = {
   listAlarmEvents,
   updateAlarmEvent,
+  createAlarmEvent,
 };

@@ -59,7 +59,7 @@ export default function TrackingMapPage() {
     enabled: Boolean(selectedShipmentId),
     retry: false,
     // BUG #8 FIX: refresh định kỳ để map hiển thị vị trí mới nhất từ IoT
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
   })
 
   // BUG #4 FIX: Chỉ gọi traceRoute khi telemetry logs chưa đủ để render route.
@@ -79,7 +79,7 @@ export default function TrackingMapPage() {
     enabled: Boolean(selectedShipmentId),
     retry: false,
     // BUG #8 FIX: refresh events (có thể có CUSTODY_TRANSFER mới trong quá trình vận chuyển)
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   })
 
   const historyPoints = useMemo<TelemetryPoint[]>(() => {

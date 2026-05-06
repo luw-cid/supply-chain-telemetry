@@ -29,6 +29,17 @@ export async function listAlarms(params: {
   return data
 }
 
+export async function createAlarm(params: {
+  shipmentId: string
+  alarmType?: string
+  severity?: string
+  alarmReason?: string
+  source?: string
+}) {
+  const { data } = await api.post<{ success: boolean; data: unknown }>('/api/v1/alarms', params)
+  return data
+}
+
 export async function updateAlarm(alarmId: string, status: 'ACKNOWLEDGED' | 'RESOLVED' | 'FALSE_ALARM') {
   const { data } = await api.patch<{ success: boolean; data: unknown }>(`/api/v1/alarms/${alarmId}`, { status })
   return data

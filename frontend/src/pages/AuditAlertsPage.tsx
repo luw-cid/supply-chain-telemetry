@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
-import { Card, DatePicker, Space, Table, Tabs, Typography } from 'antd'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Badge, Button, Card, DatePicker, message, Space, Table, Tabs, Typography } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { useState } from 'react'
-import { listAlarms } from '../api/alarms'
+import { createAlarm, listAlarms, updateAlarm } from '../api/alarms'
 import { listAuditLogs } from '../api/audit'
+import TelemetrySimulator from '../components/TelemetrySimulator'
 import { Link } from 'react-router-dom'
 import { useThemeMode } from '../contexts/ThemeContext'
 
@@ -14,6 +15,8 @@ export default function AuditAlertsPage() {
   const [auditRange, setAuditRange] = useState<[Dayjs | null, Dayjs | null]>([null, null])
   const [alarmPage, setAlarmPage] = useState(1)
   const [auditPage, setAuditPage] = useState(1)
+  const [simOpen, setSimOpen] = useState(false)
+  const [simRunning, setSimRunning] = useState(false)
 
   const fromA = alarmRange[0] ? dayjs(alarmRange[0]).startOf('day').toISOString() : undefined
   const toA = alarmRange[1] ? dayjs(alarmRange[1]).endOf('day').toISOString() : undefined
@@ -44,15 +47,58 @@ export default function AuditAlertsPage() {
     retry: false,
   })
 
+  const queryClient = useQueryClient()
+
+  const updateAlarmMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'ACKNOWLEDGED' | 'RESOLVED' | 'FALSE_ALARM' }) =>
+      updateAlarm(id, status),
+    onSuccess: () => {
+      message.success('Đã cập nhật trạng thái alarm!')
+      queryClient.invalidateQueries({ queryKey: ['alarms'] })
+    },
+    onError: () => {
+      message.error('Cập nhật thất bại.')
+    },
+  })
+
+  const createAlarmMut = useMutation({
+    mutationFn: () =>
+      createAlarm({
+        shipmentId: 'SHP-E2E-001',
+        alarmType: 'MANUAL',
+        severity: 'HIGH',
+        alarmReason: 'Test alert từ nút Test Alert',
+      }),
+    onSuccess: () => {
+      message.success('Đã tạo alert test thành công!')
+      queryClient.invalidateQueries({ queryKey: ['alarms'] })
+    },
+    onError: () => {
+      message.error('Tạo alert thất bại, kiểm tra lại kết nối DB.')
+    },
+  })
+
   const titleCls = isDark ? '!text-slate-100' : '!text-slate-900'
   const mutedCls = isDark ? 'text-slate-400' : 'text-slate-600'
   const monoCls = isDark ? 'text-slate-400 text-xs font-mono' : 'text-slate-600 text-xs font-mono'
 
   return (
     <Space orientation="vertical" size={16} className="w-full">
-      <Typography.Title level={3} className={titleCls}>
-        Cảnh báo & Kiểm toán
-      </Typography.Title>
+      <div className="flex items-center justify-between">
+        <Typography.Title level={3} className={titleCls}>
+          Cảnh báo & Kiểm toán
+        </Typography.Title>
+        <Space>
+          <Button type="primary" loading={createAlarmMut.isPending} onClick={() => createAlarmMut.mutate()}>
+            Test Alert
+          </Button>
+          <Badge dot={simRunning}>
+            <Button onClick={() => setSimOpen(true)}>
+              Simulator
+            </Button>
+          </Badge>
+        </Space>
+      </div>
 
       <Tabs
         className="app-tabs"
@@ -90,6 +136,39 @@ export default function AuditAlertsPage() {
                     { title: 'Loại', dataIndex: 'AlarmType', key: 'ty' },
                     { title: 'Trạng thái', dataIndex: 'Status', key: 'st' },
                     { title: 'Lý do', dataIndex: 'AlarmReason', key: 'r', ellipsis: true },
+                    {
+                      title: 'Xử lý',
+                      key: 'action',
+                      width: 280,
+                      render: (_, row) =>
+                        row.Status === 'OPEN' ? (
+                          <Space size={4}>
+                            <Button
+                              size="small"
+                              type="primary"
+                              loading={updateAlarmMut.isPending}
+                              onClick={() => updateAlarmMut.mutate({ id: row.AlarmEventID, status: 'ACKNOWLEDGED' })}
+                            >
+                              Acknowledge
+                            </Button>
+                            <Button
+                              size="small"
+                              loading={updateAlarmMut.isPending}
+                              onClick={() => updateAlarmMut.mutate({ id: row.AlarmEventID, status: 'RESOLVED' })}
+                            >
+                              Resolve
+                            </Button>
+                            <Button
+                              size="small"
+                              danger
+                              loading={updateAlarmMut.isPending}
+                              onClick={() => updateAlarmMut.mutate({ id: row.AlarmEventID, status: 'FALSE_ALARM' })}
+                            >
+                              False Alarm
+                            </Button>
+                          </Space>
+                        ) : null,
+                    },
                   ]}
                 />
               </Card>
@@ -144,6 +223,7 @@ export default function AuditAlertsPage() {
           },
         ]}
       />
+      <TelemetrySimulator open={simOpen} onClose={() => setSimOpen(false)} onRunningChange={setSimRunning} />
     </Space>
   )
 }

@@ -14,9 +14,20 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Badge, Button, Dropdown, Layout, List, Menu, Popover, Tooltip, Typography } from 'antd'
-import type { MenuProps } from 'antd'
-import { useMemo } from 'react'
+import {
+  Avatar,
+  Badge,
+  Button,
+  Dropdown,
+  Layout,
+  List,
+  Menu,
+  notification,
+  Popover,
+  Tooltip,
+  Typography,
+} from 'antd'
+import { useEffect, useMemo, useRef } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { listAlarms } from '../api/alarms'
 import RoleGuard from '../components/RoleGuard'
@@ -29,8 +40,6 @@ const { Sider, Header, Content } = Layout
 function buildMenuItems(role: string | undefined): MenuProps['items'] {
   const dashboard = { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' }
   const trackingMap = { key: '/tracking-map', icon: <EnvironmentOutlined />, label: 'Tracking map' }
-  const alerts = { key: '/alerts', icon: <BellOutlined />, label: 'Alerts (demo)' }
-  const analytics = { key: '/analytics', icon: <BarChartOutlined />, label: 'Analytics (demo)' }
   const ports = { key: '/ports', icon: <EnvironmentOutlined />, label: 'Quản lý cảng' }
   const parties = { key: '/parties', icon: <TeamOutlined />, label: 'Đối tác' }
   const shipments = { key: '/shipments', icon: <DeploymentUnitOutlined />, label: 'Lô hàng' }
@@ -43,11 +52,11 @@ function buildMenuItems(role: string | undefined): MenuProps['items'] {
     case 'OWNER':
       return [dashboard, shipments]
     case 'ADMIN':
-      return [dashboard, trackingMap, alerts, analytics, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, audit]
+      return [dashboard, trackingMap, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt, audit]
     case 'LOGISTICS':
-      return [dashboard, trackingMap, alerts, analytics, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt]
+      return [dashboard, trackingMap, ports, parties, shipments, custodyTransfer, custodyChain, routeOpt]
     case 'AUDITOR':
-      return [dashboard, trackingMap, alerts, analytics, parties, shipments, custodyChain, audit]
+      return [dashboard, trackingMap, parties, shipments, custodyChain, audit]
     default:
       return [dashboard, shipments]
   }
@@ -55,13 +64,11 @@ function buildMenuItems(role: string | undefined): MenuProps['items'] {
 
 function selectedKey(pathname: string): string {
   if (pathname.startsWith('/tracking-map')) return '/tracking-map'
-  if (pathname.startsWith('/alerts')) return '/alerts'
   if (pathname.startsWith('/ports')) return '/ports'
   if (pathname.startsWith('/parties')) return '/parties'
   if (pathname.startsWith('/shipments')) return '/shipments'
   if (pathname.startsWith('/custody')) return pathname.startsWith('/custody/transfer') ? '/custody/transfer' : '/custody/chain'
   if (pathname.startsWith('/analytics/route-optimization')) return '/analytics/route-optimization'
-  if (pathname.startsWith('/analytics')) return '/analytics'
   if (pathname.startsWith('/audit-alerts')) return '/audit-alerts'
   return pathname
 }
@@ -78,12 +85,43 @@ export default function MainLayout() {
   const { data: alarmsData } = useQuery({
     queryKey: ['alarms', 'open'],
     queryFn: () => listAlarms({ status: 'OPEN', limit: 30 }),
-    refetchInterval: 60_000,
+    refetchInterval: 15_000,
     retry: false,
   })
 
   const openAlarms = alarmsData?.data ?? []
   const alarmCount = openAlarms.length
+  const prevCountRef = useRef(alarmCount)
+  const notified = useRef(new Set<string>())
+
+  useEffect(() => {
+    const prev = prevCountRef.current
+    prevCountRef.current = alarmCount
+    if (prev === 0 || alarmCount <= prev) return
+
+    const newAlarms = openAlarms.filter((a) => !notified.current.has(a.AlarmEventID))
+    if (!newAlarms.length) return
+
+    newAlarms.forEach((a) => notified.current.add(a.AlarmEventID))
+    newAlarms.slice(0, 3).forEach((a) => {
+      notification.warning({
+        message: `Cảnh báo: ${a.AlarmType}`,
+        description: a.AlarmReason,
+        placement: 'bottomRight',
+        duration: 6,
+        onClick: () => navigate('/audit-alerts'),
+      })
+    })
+    if (newAlarms.length > 3) {
+      notification.info({
+        message: `+${newAlarms.length - 3} cảnh báo khác`,
+        description: 'Bấm để xem chi tiết',
+        placement: 'bottomRight',
+        duration: 6,
+        onClick: () => navigate('/audit-alerts'),
+      })
+    }
+  }, [alarmCount, openAlarms, navigate])
 
   return (
     <Layout

@@ -26,7 +26,20 @@ async function updateAlarm(alarmId, body, user) {
   });
 }
 
+async function createAlarm(body) {
+  const { shipmentId, alarmType, severity, alarmReason, source } = body || {};
+  if (!shipmentId) throw AppError.badRequest('shipmentId is required');
+  return alarmsRepository.createAlarmEvent({
+    shipmentId,
+    alarmType: alarmType || 'MANUAL',
+    severity: severity || 'MEDIUM',
+    alarmReason: alarmReason || 'Manual test alert',
+    source: source || 'INTEGRATION',
+  });
+}
+
 module.exports = {
   listAlarms,
   updateAlarm,
+  createAlarm,
 };

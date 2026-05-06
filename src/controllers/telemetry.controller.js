@@ -5,6 +5,7 @@ const { getOptimalRoutes } = require('../services/route_optimization.service');
 
 async function ingestTelemetryController(req, res, next) {
 	try {
+		console.log('[DEBUG] ingest body:', JSON.stringify(req.body, null, 2));
 		const result = await ingestTelemetry(req.body);
 		res.status(200).json({
 			success: true,

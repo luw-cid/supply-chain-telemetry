@@ -1,4 +1,4 @@
-const { listAlarms, updateAlarm } = require('../services/alarms.service');
+const { listAlarms, updateAlarm, createAlarm } = require('../services/alarms.service');
 
 async function listAlarmsController(req, res, next) {
   try {
@@ -26,7 +26,17 @@ async function updateAlarmController(req, res, next) {
   }
 }
 
+async function createAlarmController(req, res, next) {
+  try {
+    const result = await createAlarm(req.body);
+    return res.status(201).json({ success: true, data: result });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listAlarmsController,
   updateAlarmController,
+  createAlarmController,
 };
