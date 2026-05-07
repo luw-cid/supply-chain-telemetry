@@ -141,16 +141,18 @@ export default function AuditAlertsPage() {
                       key: 'action',
                       width: 280,
                       render: (_, row) =>
-                        row.Status === 'OPEN' ? (
+                        row.Status === 'OPEN' || row.Status === 'ACKNOWLEDGED' ? (
                           <Space size={4}>
-                            <Button
-                              size="small"
-                              type="primary"
-                              loading={updateAlarmMut.isPending}
-                              onClick={() => updateAlarmMut.mutate({ id: row.AlarmEventID, status: 'ACKNOWLEDGED' })}
-                            >
-                              Acknowledge
-                            </Button>
+                            {row.Status === 'OPEN' && (
+                              <Button
+                                size="small"
+                                type="primary"
+                                loading={updateAlarmMut.isPending}
+                                onClick={() => updateAlarmMut.mutate({ id: row.AlarmEventID, status: 'ACKNOWLEDGED' })}
+                              >
+                                Acknowledge
+                              </Button>
+                            )}
                             <Button
                               size="small"
                               loading={updateAlarmMut.isPending}

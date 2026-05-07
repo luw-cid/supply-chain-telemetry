@@ -1,0 +1,21 @@
+{
+  "title": "Seq - Outbox Processing",
+  "participants": [
+    { "name": "Sched" },
+    { "name": "Processor" },
+    { "name": "MySQL" },
+    { "name": "Notification" }
+  ],
+  "messages": [
+    { "from": "Sched", "to": "Processor", "type": "sync", "label": "every 5s: processOutbox()" },
+    { "from": "Processor", "to": "MySQL", "type": "sync", "label": "SELECT PENDING ... SKIP LOCKED LIMIT 10" },
+    { "from": "MySQL", "to": "Processor", "type": "return", "label": "empty / events" },
+    { "from": "Processor", "to": "Sched", "type": "return", "label": "sleep" },
+    { "from": "MySQL", "to": "Processor", "type": "return", "label": "[{id, payload}]" },
+    { "from": "Processor", "to": "Processor", "type": "sync", "label": "processEvent" },
+    { "from": "Processor", "to": "Notification", "type": "sync", "label": "sendNotification(payload)" },
+    { "from": "Notification", "to": "Processor", "type": "return", "label": "delivered / error" },
+    { "from": "Processor", "to": "MySQL", "type": "sync", "label": "UPDATE status=PROCESSED" },
+    { "from": "Processor", "to": "MySQL", "type": "sync", "label": "UPDATE retry++, FAILED if >=3" }
+  ]
+}

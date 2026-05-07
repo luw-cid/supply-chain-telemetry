@@ -1,0 +1,18 @@
+{
+  "title": "Seq - Route Optimization",
+  "participants": [
+    { "name": "Planner" },
+    { "name": "Route Svc" },
+    { "name": "MySQL" },
+    { "name": "MongoDB" }
+  ],
+  "messages": [
+    { "from": "Planner", "to": "Route Svc", "type": "sync", "label": "findOptimalRoutes(from, to, type)" },
+    { "from": "Route Svc", "to": "MySQL", "type": "sync", "label": "get cargo constraints" },
+    { "from": "MySQL", "to": "Route Svc", "type": "return", "label": "{ tempRange, maxHours }" },
+    { "from": "Route Svc", "to": "MongoDB", "type": "sync", "label": "port_edges.aggregate($graphLookup)" },
+    { "from": "MongoDB", "to": "Route Svc", "type": "return", "label": "[{from, to, stats}]" },
+    { "from": "Route Svc", "to": "Route Svc", "type": "sync", "label": "reconstructPaths + rank" },
+    { "from": "Route Svc", "to": "Planner", "type": "return", "label": "{ routes: [...] }" }
+  ]
+}

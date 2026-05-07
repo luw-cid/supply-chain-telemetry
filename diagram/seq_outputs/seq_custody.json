@@ -1,0 +1,16 @@
+{
+  "title": "Seq - Chain of Custody",
+  "participants": [
+    { "name": "Client" },
+    { "name": "Custody Repo" },
+    { "name": "MySQL SP" }
+  ],
+  "messages": [
+    { "from": "Client", "to": "Custody Repo", "type": "sync", "label": "changeCustody(id, from, to, port)" },
+    { "from": "Custody Repo", "to": "MySQL SP", "type": "sync", "label": "CALL sp_change_custody(...)" },
+    { "from": "MySQL SP", "to": "MySQL SP", "type": "sync", "label": "validate + check + START TX + UPDATE + INSERT + COMMIT" },
+    { "from": "MySQL SP", "to": "Custody Repo", "type": "return", "label": "SIGNAL blocked (if ALARM)" },
+    { "from": "MySQL SP", "to": "Custody Repo", "type": "return", "label": "success" },
+    { "from": "Custody Repo", "to": "Client", "type": "return", "label": "Custody transferred / ERROR" }
+  ]
+}

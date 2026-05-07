@@ -1,0 +1,22 @@
+{
+  "title": "Seq - Shipment Creation",
+  "participants": [
+    { "name": "Client" },
+    { "name": "Shipment Repo" },
+    { "name": "MySQL" },
+    { "name": "MongoDB" }
+  ],
+  "messages": [
+    { "from": "Client", "to": "Shipment Repo", "type": "sync", "label": "createShipment(data)" },
+    { "from": "Shipment Repo", "to": "MySQL", "type": "sync", "label": "BEGIN TRANSACTION" },
+    { "from": "MySQL", "to": "Shipment Repo", "type": "return", "label": "ok" },
+    { "from": "Shipment Repo", "to": "MySQL", "type": "sync", "label": "INSERT Shipments" },
+    { "from": "MySQL", "to": "Shipment Repo", "type": "return", "label": "ShipmentID" },
+    { "from": "Shipment Repo", "to": "MySQL", "type": "sync", "label": "INSERT AuditLog" },
+    { "from": "Shipment Repo", "to": "MySQL", "type": "sync", "label": "COMMIT" },
+    { "from": "MySQL", "to": "Shipment Repo", "type": "return", "label": "ok" },
+    { "from": "Shipment Repo", "to": "MongoDB", "type": "sync", "label": "ShipmentRoutes.create(...)" },
+    { "from": "MongoDB", "to": "Shipment Repo", "type": "return", "label": "route doc saved" },
+    { "from": "Shipment Repo", "to": "Client", "type": "return", "label": "{ shipment, route }" }
+  ]
+}

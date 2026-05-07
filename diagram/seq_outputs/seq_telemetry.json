@@ -1,0 +1,23 @@
+{
+  "title": "Seq - Telemetry Saga",
+  "participants": [
+    { "name": "IoT" },
+    { "name": "Saga" },
+    { "name": "MongoDB" },
+    { "name": "MySQL" }
+  ],
+  "messages": [
+    { "from": "IoT", "to": "Saga", "type": "sync", "label": "ingestTelemetry(id, temp, loc)" },
+    { "from": "Saga", "to": "Saga", "type": "sync", "label": "validate + idempotency" },
+    { "from": "Saga", "to": "MongoDB", "type": "sync", "label": "insert telemetry_point" },
+    { "from": "MongoDB", "to": "Saga", "type": "return", "label": "saved" },
+    { "from": "Saga", "to": "MySQL", "type": "sync", "label": "SP_TraceRouteContext(id)" },
+    { "from": "MySQL", "to": "Saga", "type": "return", "label": "tempMax, status" },
+    { "from": "Saga", "to": "Saga", "type": "sync", "label": "temp > tempMax ?" },
+    { "from": "Saga", "to": "MySQL", "type": "sync", "label": "BEGIN TX + UPDATE + INSERT + COMMIT" },
+    { "from": "MySQL", "to": "Saga", "type": "return", "label": "ok" },
+    { "from": "Saga", "to": "MySQL", "type": "sync", "label": "UPDATE LastTelemetryStatus=OK" },
+    { "from": "MySQL", "to": "Saga", "type": "return", "label": "ok" },
+    { "from": "Saga", "to": "IoT", "type": "return", "label": "done" }
+  ]
+}
