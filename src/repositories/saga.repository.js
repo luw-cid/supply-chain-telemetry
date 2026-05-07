@@ -53,6 +53,7 @@ async function markViolationAndEnqueueAlarm({ shipmentId, alarmReason, outboxPay
       `UPDATE Shipments
        SET LastTelemetryStatus = 'VIOLATION',
            LastTelemetryAtUTC  = CURRENT_TIMESTAMP(6),
+           Status              = 'ALARM',
            AlarmReason         = COALESCE(AlarmReason, ?)
        WHERE ShipmentID = ?`,
       [alarmReason, shipmentId]

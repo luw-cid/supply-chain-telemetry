@@ -50,6 +50,9 @@ async function listAlarmEvents(opts = {}) {
       ae.AlarmReason,
       ae.AlarmAtUTC,
       ae.Source,
+      ae.ResolutionNote,
+      ae.ResolvedBy,
+      ae.ResolvedAtUTC,
       ae.CreatedAtUTC,
       s.Status AS ShipmentStatus
     FROM AlarmEvents ae
@@ -63,20 +66,41 @@ async function listAlarmEvents(opts = {}) {
   return { items: rows, total, page, limit };
 }
 
-async function updateAlarmEvent({ alarmId, status, userId }) {
+async function updateAlarmEvent({ alarmId, status, userId, resolutionNote }) {
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const setClause = status === 'ACKNOWLEDGED'
     ? `Status = ?, AcknowledgedBy = ?, AcknowledgedAtUTC = ?`
-    : `Status = ?, ResolvedBy = ?, ResolvedAtUTC = ?`;
+    : `Status = ?, ResolvedBy = ?, ResolvedAtUTC = ?, ResolutionNote = ?`;
+  const params = status === 'ACKNOWLEDGED'
+    ? [status, userId, now, alarmId]
+    : [status, userId, now, resolutionNote || null, alarmId];
   const [result] = await pool.query(
-    `UPDATE AlarmEvents SET ${setClause} WHERE AlarmEventID = ? AND Status = 'OPEN'`,
-    [status, userId, now, alarmId]
+    `UPDATE AlarmEvents SET ${setClause} WHERE AlarmEventID = ? AND Status IN ('OPEN', 'ACKNOWLEDGED')`,
+    params
   );
   if (result.affectedRows === 0) {
     const exists = await pool.query('SELECT Status FROM AlarmEvents WHERE AlarmEventID = ?', [alarmId]);
     if (exists[0].length === 0) throw require('../utils/app-error').notFound('Alarm not found');
-    throw require('../utils/app-error').badRequest('Alarm is not in OPEN status');
+    throw require('../utils/app-error').badRequest('Alarm is not in OPEN or ACKNOWLEDGED status');
   }
+
+  if (status !== 'ACKNOWLEDGED') {
+    const [shipmentRow] = await pool.query('SELECT ShipmentID FROM AlarmEvents WHERE AlarmEventID = ?', [alarmId]);
+    const shipmentId = shipmentRow[0]?.ShipmentID;
+    if (shipmentId) {
+      const [openRows] = await pool.query(
+        `SELECT COUNT(*) AS cnt FROM AlarmEvents WHERE ShipmentID = ? AND Status IN ('OPEN', 'ACKNOWLEDGED')`,
+        [shipmentId]
+      );
+      if (openRows[0].cnt === 0) {
+        await pool.query(
+          `UPDATE Shipments SET Status = 'NORMAL', LastTelemetryStatus = 'OK', AlarmAtUTC = NULL, AlarmReason = NULL, UpdatedAtUTC = CURRENT_TIMESTAMP(6) WHERE ShipmentID = ?`,
+          [shipmentId]
+        );
+      }
+    }
+  }
+
   return { alarmId, status, userId, updatedAt: now };
 }
 
@@ -85,6 +109,10 @@ async function createAlarmEvent({ shipmentId, alarmType, severity, alarmReason, 
     `INSERT INTO AlarmEvents (AlarmEventID, ShipmentID, AlarmType, Severity, Status, AlarmReason, AlarmAtUTC, Source)
      VALUES (UUID(), ?, ?, ?, 'OPEN', ?, CURRENT_TIMESTAMP(6), ?)`,
     [shipmentId, alarmType, severity, alarmReason, source]
+  );
+  await pool.query(
+    `UPDATE Shipments SET Status = 'ALARM', AlarmAtUTC = CURRENT_TIMESTAMP(6), AlarmReason = ?, UpdatedAtUTC = CURRENT_TIMESTAMP(6) WHERE ShipmentID = ?`,
+    [alarmReason, shipmentId]
   );
   return { success: true };
 }

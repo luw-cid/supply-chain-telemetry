@@ -9,6 +9,9 @@ export interface AlarmRow {
   AlarmReason: string
   AlarmAtUTC: string
   Source: string
+  ResolutionNote?: string | null
+  ResolvedBy?: string | null
+  ResolvedAtUTC?: string | null
   CreatedAtUTC: string
   ShipmentStatus?: string
 }
@@ -40,7 +43,7 @@ export async function createAlarm(params: {
   return data
 }
 
-export async function updateAlarm(alarmId: string, status: 'ACKNOWLEDGED' | 'RESOLVED' | 'FALSE_ALARM') {
-  const { data } = await api.patch<{ success: boolean; data: unknown }>(`/api/v1/alarms/${alarmId}`, { status })
+export async function updateAlarm(alarmId: string, status: 'ACKNOWLEDGED' | 'RESOLVED' | 'FALSE_ALARM', resolutionNote?: string | null) {
+  const { data } = await api.patch<{ success: boolean; data: unknown }>(`/api/v1/alarms/${alarmId}`, { status, resolutionNote })
   return data
 }

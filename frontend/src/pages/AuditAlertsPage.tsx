@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Badge, Button, Card, DatePicker, message, Space, Table, Tabs, Typography } from 'antd'
+import { Badge, Button, Card, DatePicker, message, Modal, Space, Table, Tabs, Tag, Typography } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { useState } from 'react'
+import TextArea from 'antd/es/input/TextArea'
 import { createAlarm, listAlarms, updateAlarm } from '../api/alarms'
 import { listAuditLogs } from '../api/audit'
 import TelemetrySimulator from '../components/TelemetrySimulator'
@@ -17,6 +18,7 @@ export default function AuditAlertsPage() {
   const [auditPage, setAuditPage] = useState(1)
   const [simOpen, setSimOpen] = useState(false)
   const [simRunning, setSimRunning] = useState(false)
+  const [resolveModal, setResolveModal] = useState<{ alarmId: string; status: 'RESOLVED' | 'FALSE_ALARM'; note: string } | null>(null)
 
   const fromA = alarmRange[0] ? dayjs(alarmRange[0]).startOf('day').toISOString() : undefined
   const toA = alarmRange[1] ? dayjs(alarmRange[1]).endOf('day').toISOString() : undefined
@@ -50,8 +52,8 @@ export default function AuditAlertsPage() {
   const queryClient = useQueryClient()
 
   const updateAlarmMut = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'ACKNOWLEDGED' | 'RESOLVED' | 'FALSE_ALARM' }) =>
-      updateAlarm(id, status),
+    mutationFn: ({ id, status, resolutionNote }: { id: string; status: 'ACKNOWLEDGED' | 'RESOLVED' | 'FALSE_ALARM'; resolutionNote?: string | null }) =>
+      updateAlarm(id, status, resolutionNote),
     onSuccess: () => {
       message.success('Đã cập nhật trạng thái alarm!')
       queryClient.invalidateQueries({ queryKey: ['alarms'] })
@@ -131,11 +133,22 @@ export default function AuditAlertsPage() {
                     emptyText: alarmsQ.isError ? 'Lỗi tải (kiểm tra DB AlarmEvents / JWT).' : 'Không có dữ liệu',
                   }}
                   columns={[
-                    { title: 'Thời gian', dataIndex: 'AlarmAtUTC', key: 't', width: 200, render: (v: string) => new Date(v).toLocaleString() },
-                    { title: 'Shipment', dataIndex: 'ShipmentID', key: 's', render: (id: string) => <Link to={`/shipments/${id}`}>{id}</Link> },
-                    { title: 'Loại', dataIndex: 'AlarmType', key: 'ty' },
-                    { title: 'Trạng thái', dataIndex: 'Status', key: 'st' },
+                    { title: 'Thời gian', dataIndex: 'AlarmAtUTC', key: 't', width: 160, render: (v: string) => new Date(v).toLocaleString() },
+                    { title: 'Shipment', dataIndex: 'ShipmentID', key: 's', width: 140, render: (id: string) => <Link to={`/shipments/${id}`}>{id}</Link> },
+                    { title: 'Loại', dataIndex: 'AlarmType', key: 'ty', width: 120 },
+                    { title: 'Trạng thái', dataIndex: 'Status', key: 'st', width: 110, render: (v: string) => <Tag color={v === 'RESOLVED' || v === 'FALSE_ALARM' ? 'green' : v === 'ACKNOWLEDGED' ? 'blue' : 'volcano'}>{v}</Tag> },
                     { title: 'Lý do', dataIndex: 'AlarmReason', key: 'r', ellipsis: true },
+                    {
+                      title: 'Ghi chú',
+                      dataIndex: 'ResolutionNote',
+                      key: 'note',
+                      width: 180,
+                      ellipsis: true,
+                      render: (v: string, row: any) =>
+                        row.Status === 'RESOLVED' || row.Status === 'FALSE_ALARM'
+                          ? <Typography.Text type="secondary">{v || '—'}</Typography.Text>
+                          : null,
+                    },
                     {
                       title: 'Xử lý',
                       key: 'action',
@@ -156,7 +169,7 @@ export default function AuditAlertsPage() {
                             <Button
                               size="small"
                               loading={updateAlarmMut.isPending}
-                              onClick={() => updateAlarmMut.mutate({ id: row.AlarmEventID, status: 'RESOLVED' })}
+                              onClick={() => setResolveModal({ alarmId: row.AlarmEventID, status: 'RESOLVED', note: '' })}
                             >
                               Resolve
                             </Button>
@@ -164,7 +177,7 @@ export default function AuditAlertsPage() {
                               size="small"
                               danger
                               loading={updateAlarmMut.isPending}
-                              onClick={() => updateAlarmMut.mutate({ id: row.AlarmEventID, status: 'FALSE_ALARM' })}
+                              onClick={() => setResolveModal({ alarmId: row.AlarmEventID, status: 'FALSE_ALARM', note: '' })}
                             >
                               False Alarm
                             </Button>
@@ -225,6 +238,35 @@ export default function AuditAlertsPage() {
           },
         ]}
       />
+      <Modal
+        title={resolveModal?.status === 'RESOLVED' ? 'Xác nhận Resolve' : 'Xác nhận False Alarm'}
+        open={!!resolveModal}
+        onCancel={() => setResolveModal(null)}
+        okText="Xác nhận"
+        okButtonProps={{ loading: updateAlarmMut.isPending }}
+        onOk={() => {
+          if (!resolveModal) return
+          updateAlarmMut.mutate({ id: resolveModal.alarmId, status: resolveModal.status, resolutionNote: resolveModal.note || null })
+          setResolveModal(null)
+        }}
+      >
+        <Space direction="vertical" className="w-full">
+          <Typography.Text>
+            Bạn có chắc muốn đánh dấu alarm này là <strong>{resolveModal?.status === 'RESOLVED' ? 'đã xử lý' : 'false alarm'}</strong>?
+          </Typography.Text>
+          {resolveModal?.status === 'RESOLVED' && (
+            <div>
+              <Typography.Text type="secondary">Ghi chú xử lý:</Typography.Text>
+              <TextArea
+                rows={3}
+                value={resolveModal?.note ?? ''}
+                onChange={(e) => setResolveModal((prev) => prev ? { ...prev, note: e.target.value } : null)}
+                placeholder="Nhập ghi chú xử lý (tùy chọn)..."
+              />
+            </div>
+          )}
+        </Space>
+      </Modal>
       <TelemetrySimulator open={simOpen} onClose={() => setSimOpen(false)} onRunningChange={setSimRunning} />
     </Space>
   )

@@ -15,7 +15,7 @@ async function listAlarms(query = {}) {
 
 async function updateAlarm(alarmId, body, user) {
   if (!alarmId) throw AppError.badRequest('AlarmEventID is required');
-  const { status } = body || {};
+  const { status, resolutionNote } = body || {};
   if (!status || !['ACKNOWLEDGED', 'RESOLVED', 'FALSE_ALARM'].includes(status)) {
     throw AppError.badRequest('status must be ACKNOWLEDGED, RESOLVED, or FALSE_ALARM');
   }
@@ -23,6 +23,7 @@ async function updateAlarm(alarmId, body, user) {
     alarmId,
     status,
     userId: user?.sub || 'unknown',
+    resolutionNote: resolutionNote || null,
   });
 }
 

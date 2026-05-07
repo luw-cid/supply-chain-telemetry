@@ -83,13 +83,27 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
       const violation = !!(res.data as any)?.violation
       setLogs((prev) => [...prev, { time: new Date().toLocaleTimeString(), temp, violation, ok: true }])
       setSentCount((c) => c + 1)
-      if (violation) setViolationCount((c) => c + 1)
+      if (violation) {
+        setViolationCount((c) => c + 1)
+        notification.warning({
+          message: `Cảnh báo nhiệt độ`,
+          description: `${temp}°C vượt ngưỡng cho phép (Shipment: ${shipmentId})`,
+          placement: 'bottomRight',
+          duration: 4,
+        })
+      }
       return violation
     } catch (err: any) {
       setLogs((prev) => [
         ...prev,
         { time: new Date().toLocaleTimeString(), temp, violation: false, ok: false, error: err?.response?.data?.error || err.message },
       ])
+      notification.error({
+        message: 'Lỗi gửi telemetry',
+        description: `${temp}°C: ${err?.response?.data?.error || err.message}`,
+        placement: 'bottomRight',
+        duration: 4,
+      })
       return false
     }
   }
@@ -103,29 +117,14 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
     stopRef.current = false
     setRunning(true)
     onRunningChange?.(true)
-    onClose()
 
     let s = 0, v = 0
-    notification.open({
-      key: 'sim-progress',
-      message: 'Simulator running',
-      description: `0 / ${count} sent`,
-      duration: 0,
-      placement: 'bottomRight',
-    })
 
     for (let i = 0; i < count; i++) {
       if (stopRef.current) break
       const vio = await sendOne(i)
       s++
       if (vio) v++
-      notification.open({
-        key: 'sim-progress',
-        message: 'Simulator running',
-        description: `${s} / ${count} sent · ${v} violations`,
-        duration: 0,
-        placement: 'bottomRight',
-      })
       if (i < count - 1 && !stopRef.current) {
         await new Promise((r) => setTimeout(r, interval * 1000))
       }
@@ -134,23 +133,12 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
     setRunning(false)
     onRunningChange?.(false)
 
-    if (!stopRef.current) {
-      notification.success({
-        key: 'sim-progress',
-        message: 'Simulator done',
-        description: `Sent ${s} · ${v} violations`,
-        duration: 6,
-        placement: 'bottomRight',
-      })
-    } else {
-      notification.warning({
-        key: 'sim-progress',
-        message: 'Simulator stopped',
-        description: `Sent ${s} · ${v} violations`,
-        duration: 6,
-        placement: 'bottomRight',
-      })
-    }
+    notification.info({
+      message: 'Simulator kết thúc',
+      description: `Đã gửi ${s} · ${v} vi phạm`,
+      placement: 'bottomRight',
+      duration: 5,
+    })
     queryClient.invalidateQueries({ queryKey: ['alarms'] })
   }
 
