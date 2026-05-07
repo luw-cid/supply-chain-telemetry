@@ -4,6 +4,7 @@ const AppError = require('../utils/app-error');
 const shipmentRepository = require('../repositories/shipment.repository');
 const portRepository = require('../repositories/port.repository');
 const trackingEventsRepository = require('../repositories/tracking_events.repository');
+const { ensureShipmentAccess } = require('./shipment.service');
 
 async function recordCustodyTransferMarker({ shipmentId, fromPartyId, toPartyId, handoverPortCode }) {
   if (!shipmentId) throw AppError.badRequest('shipmentId is required');
@@ -43,8 +44,11 @@ async function recordCustodyTransferMarker({ shipmentId, fromPartyId, toPartyId,
   });
 }
 
-async function listTrackingEvents(shipmentId, opts = {}) {
+async function listTrackingEvents(shipmentId, opts = {}, access = {}) {
   if (!shipmentId) throw AppError.badRequest('shipmentId is required');
+  const shipment = await shipmentRepository.findShipmentDetailsById(String(shipmentId).trim());
+  if (!shipment) throw AppError.notFound(`Shipment ${shipmentId} not found`);
+  ensureShipmentAccess(shipment, access);
   return trackingEventsRepository.listTrackingEventsByShipment(String(shipmentId).trim(), opts);
 }
 

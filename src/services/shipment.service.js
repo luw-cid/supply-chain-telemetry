@@ -105,15 +105,7 @@ async function getShipmentDetails(shipmentId, access = {}) {
     throw AppError.notFound(`Shipment ${shipmentId} not found`);
   }
 
-  const { role, partyId } = access;
-  if (role === 'OWNER') {
-    if (!partyId) {
-      throw AppError.forbidden('Tài khoản OWNER cần được gán PartyID để xem lô hàng');
-    }
-    if (shipment.ShipperPartyID !== partyId && shipment.ConsigneePartyID !== partyId) {
-      throw AppError.forbidden('Bạn không có quyền xem lô hàng này');
-    }
-  }
+  ensureShipmentAccess(shipment, access);
 
   const routeDoc = await shipmentRepository.findShipmentRouteById(shipmentId);
 
@@ -126,7 +118,7 @@ async function getShipmentDetails(shipmentId, access = {}) {
 async function listShipments(query = {}, access = {}) {
   const { role, partyId } = access;
   let partyScopeId;
-  if (role === 'OWNER') {
+  if (role !== 'ADMIN') {
     if (!partyId) {
       const page = Math.max(parseInt(String(query.page), 10) || 1, 1);
       const limit = Math.min(Math.max(parseInt(String(query.limit), 10) || 20, 1), 100);
@@ -144,6 +136,24 @@ async function listShipments(query = {}, access = {}) {
   });
 }
 
+function ensureShipmentAccess(shipment, access = {}) {
+  const { role, partyId } = access;
+  if (role === 'ADMIN') return;
+
+  if (!partyId) {
+    throw AppError.forbidden('Tài khoản cần được gán PartyID để xem dữ liệu lô hàng');
+  }
+
+  const isRelatedParty =
+    shipment.ShipperPartyID === partyId ||
+    shipment.ConsigneePartyID === partyId ||
+    shipment.CurrentOwnerPartyID === partyId;
+
+  if (!isRelatedParty) {
+    throw AppError.forbidden('Bạn không có quyền xem lô hàng này');
+  }
+}
+
 async function updateShipmentStatus(shipmentId, body, access = {}) {
   if (!shipmentId) throw AppError.badRequest('Shipment id is required');
   const { status, alarmResolved } = body || {};
@@ -154,11 +164,30 @@ async function updateShipmentStatus(shipmentId, body, access = {}) {
     throw AppError.badRequest('status must be NORMAL, IN_TRANSIT, or COMPLETED');
   }
 
-  const shipment = await shipmentRepository.findShipmentById(shipmentId);
+  const shipment = await shipmentRepository.findShipmentDetailsById(shipmentId);
   if (!shipment) throw AppError.notFound(`Shipment ${shipmentId} not found`);
 
-  const { role } = access;
-  if (role !== 'ADMIN' && role !== 'LOGISTICS') {
+  if (alarmResolved && status !== 'NORMAL') {
+    throw AppError.badRequest('alarmResolved can only be used when setting status to NORMAL');
+  }
+
+  const { role, partyId } = access;
+  const isAlarmResolution = alarmResolved && status === 'NORMAL';
+
+  if (isAlarmResolution) {
+    if (shipment.Status !== 'ALARM') {
+      throw AppError.badRequest('Shipment is not in ALARM status');
+    }
+    if (!partyId) {
+      throw AppError.forbidden('Tài khoản cần được gán PartyID để xác nhận đã xử lý cảnh báo');
+    }
+    if (!shipment.CurrentOwnerPartyID) {
+      throw AppError.conflict('Shipment has no active owner to authorize alarm resolution');
+    }
+    if (shipment.CurrentOwnerPartyID !== partyId) {
+      throw AppError.forbidden('Only the current owner can confirm alarm resolution');
+    }
+  } else if (role !== 'ADMIN' && role !== 'LOGISTICS') {
     throw AppError.forbidden('Only ADMIN or LOGISTICS can update shipment status');
   }
 
@@ -193,4 +222,5 @@ module.exports = {
   getShipmentDetails,
   listShipments,
   updateShipmentStatus,
+  ensureShipmentAccess,
 };

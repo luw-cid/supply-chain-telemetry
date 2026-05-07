@@ -34,7 +34,29 @@ api.interceptors.response.use(
 export function getApiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as { message?: string; error?: string } | undefined
-    return data?.message || data?.error || err.message || 'Request failed'
+    const rawMessage = data?.message || data?.error || err.message || 'Request failed'
+
+    if (rawMessage.includes('FromPartyID is not the current owner - transfer not authorized')) {
+      return 'Không thể bàn giao vì bên giao hiện tại không phải là chủ sở hữu hợp lệ của lô hàng.'
+    }
+
+    if (rawMessage.includes('No active ownership found for this shipment')) {
+      return 'Không thể bàn giao vì chưa có thông tin chủ sở hữu hiện tại của lô hàng.'
+    }
+
+    if (rawMessage.includes('fromPartyId and toPartyId must be different parties')) {
+      return 'Không thể bàn giao vì bên giao và bên nhận phải là hai đơn vị khác nhau.'
+    }
+
+    if (rawMessage.includes('Only the current owner can confirm alarm resolution')) {
+      return 'Chỉ bên đang nắm lô hàng mới có thể xác nhận đã xử lý cảnh báo.'
+    }
+
+    if (rawMessage.includes('Shipment has no active owner to authorize alarm resolution')) {
+      return 'Không thể xác nhận xử lý cảnh báo vì lô hàng chưa có chủ sở hữu hiện tại.'
+    }
+
+    return rawMessage
   }
   return err instanceof Error ? err.message : 'Unknown error'
 }

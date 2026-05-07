@@ -76,7 +76,14 @@ module.exports = {
 async function getTrackingEventsController(req, res, next) {
   try {
     const shipmentId = req.params.id;
-    const data = await listTrackingEvents(shipmentId, { limit: req.query.limit });
+    const data = await listTrackingEvents(
+      shipmentId,
+      { limit: req.query.limit },
+      {
+        role: req.user?.role,
+        partyId: req.user?.partyId ?? null,
+      }
+    );
     return res.status(200).json({ success: true, data });
   } catch (err) {
     return next(err);

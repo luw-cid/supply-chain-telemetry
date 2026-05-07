@@ -18,6 +18,8 @@
 const custodyRepository = require('../repositories/custody.repository');
 const AppError = require('../utils/app-error');
 const trackingEventsService = require('./tracking_events.service');
+const shipmentRepository = require('../repositories/shipment.repository');
+const { ensureShipmentAccess } = require('./shipment.service');
 
 // ── Helpers lỗi nhất quán theo pattern của codebase ──────────────────────────
 
@@ -194,7 +196,7 @@ async function transferOwnership(shipmentId, body) {
  * @returns {Promise<{shipmentId, detailLevel, totalTransfers, chain: object[]}>}
  * @throws {Error} notFound | badRequest
  */
-async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
+async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED', access = {}) {
   // ── 1. Validate ──────────────────────────────────────────────────────────
   if (!shipmentId || String(shipmentId).trim() === '') {
     throw badRequest('shipmentId is required');
@@ -204,6 +206,12 @@ async function getOwnershipHistory(shipmentId, detailLevel = 'DETAILED') {
   if (!['SUMMARY', 'DETAILED'].includes(level)) {
     throw badRequest('detailLevel must be SUMMARY or DETAILED');
   }
+
+  const shipment = await shipmentRepository.findShipmentDetailsById(String(shipmentId).trim());
+  if (!shipment) {
+    throw notFound(`Shipment ${shipmentId} not found`);
+  }
+  ensureShipmentAccess(shipment, access);
 
   // ── 2. Gọi Stored Procedure ──────────────────────────────────────────────
   //   SP dùng SIGNAL để throw lỗi SQL nếu shipment không tồn tại → mysql2

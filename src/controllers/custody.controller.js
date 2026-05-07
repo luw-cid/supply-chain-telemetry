@@ -82,7 +82,10 @@ async function getOwnershipHistoryController(req, res, next) {
     const shipmentId = req.params.id;
     const detailLevel = req.query.detail || 'DETAILED';
 
-    const result = await getOwnershipHistory(shipmentId, detailLevel);
+    const result = await getOwnershipHistory(shipmentId, detailLevel, {
+      role: req.user?.role,
+      partyId: req.user?.partyId ?? null,
+    });
     console.log('📤 [Controller] API response:', JSON.stringify(result, null, 2));
 
     return res.status(200).json({

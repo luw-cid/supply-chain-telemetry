@@ -119,7 +119,7 @@ async function deletePort(portCodeParam) {
   const refs = await portRepository.countPortReferences(portCode);
   if (refs > 0) {
     throw AppError.conflict(
-      `Cannot delete port ${portCode}: ${refs} shipment or ownership reference(s). Set status to CLOSED instead.`,
+      `Không thể xóa cảng ${portCode} vì cảng này đang được sử dụng trong ${refs} đơn vận chuyển hoặc bản ghi sở hữu. Vui lòng chuyển trạng thái cảng sang CLOSED thay vì xóa.`,
     );
   }
 

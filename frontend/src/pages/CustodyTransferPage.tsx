@@ -86,7 +86,11 @@ export default function CustodyTransferPage() {
   const transferMut = useMutation({
     mutationFn: (body: TransferPayload) => transferCustody(shipmentId!, body),
     onSuccess: (res) => {
-      message.success(res.message || 'Bàn giao thành công')
+      const successMessage =
+        res.message === 'Custody transfer completed successfully'
+          ? 'Đã bàn giao lô hàng thành công.'
+          : (res.message || 'Bàn giao thành công')
+      message.success(successMessage)
       qc.invalidateQueries({ queryKey: ['custody'] })
       qc.invalidateQueries({ queryKey: ['shipment', shipmentId] })
       portPrefilledForRef.current = null
@@ -138,8 +142,8 @@ export default function CustodyTransferPage() {
         <Alert
           type="error"
           showIcon
-          title="Không thể bàn giao lô hàng đang trong trạng thái ALARM"
-          description="Backend sẽ từ chối (409). Hãy xử lý alarm trước."
+          title="Lô hàng này đang có cảnh báo nên tạm thời chưa thể bàn giao"
+          description="Vui lòng xử lý cảnh báo trước, sau đó thử bàn giao lại."
         />
       )}
 
@@ -241,7 +245,7 @@ export default function CustodyTransferPage() {
               />
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={transferMut.isPending} block disabled={isAlarm}>
-              POST /api/v1/shipments/:id/transfer
+             Xác nhận chuyển giao
             </Button>
           </Form>
         </Card>

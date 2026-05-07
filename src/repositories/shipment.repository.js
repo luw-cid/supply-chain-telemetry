@@ -116,6 +116,7 @@ async function findShipmentDetailsById(shipmentId) {
       s.LastTelemetryStatus,
       s.AlarmAtUTC,
       s.AlarmReason,
+      ao.PartyID AS CurrentOwnerPartyID,
       s.CreatedAtUTC,
       s.UpdatedAtUTC,
       cp.TempMin,
@@ -125,6 +126,9 @@ async function findShipmentDetailsById(shipmentId) {
       cp.MaxTransitHours
      FROM Shipments s
      JOIN CargoProfiles cp ON cp.CargoProfileID = s.CargoProfileID
+     LEFT JOIN Ownership ao
+       ON ao.ShipmentID = s.ShipmentID
+      AND ao.EndAtUTC IS NULL
      WHERE s.ShipmentID = ?
      LIMIT 1`,
     [shipmentId]

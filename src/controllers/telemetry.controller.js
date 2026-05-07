@@ -19,7 +19,10 @@ async function ingestTelemetryController(req, res, next) {
 async function getTelemetryLogsController(req, res, next) {
 	try {
 		const { id } = req.params;
-		const result = await telemetryService.getTelemetryLogs(id, req.query);
+		const result = await telemetryService.getTelemetryLogs(id, req.query, {
+			role: req.user?.role,
+			partyId: req.user?.partyId ?? null,
+		});
 		res.status(200).json(result);
 	} catch (error) {
 		next(error);

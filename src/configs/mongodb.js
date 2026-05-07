@@ -132,7 +132,7 @@ const shipmentRoutesSchema = new mongoose.Schema({
   
   // Current position - GeoJSON Point
   current_position: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
+    type: { type: String, enum: ['Point'] },
     coordinates: [Number] // [lng, lat]
   },
   
@@ -159,9 +159,8 @@ shipmentRoutesSchema.index({ current_position: '2dsphere' });
 shipmentRoutesSchema.index({ last_telemetry_at: -1 });
 
 // Pre-save middleware để update updated_at
-shipmentRoutesSchema.pre('save', function(next) {
+shipmentRoutesSchema.pre('save', function() {
   this.updated_at = new Date();
-  next();
 });
 
 const ShipmentRoutes = mongoose.model('ShipmentRoutes', shipmentRoutesSchema, 'shipment_routes');

@@ -1,6 +1,7 @@
 const telemetryRepository = require('../repositories/telemetry.repository');
 const AppError = require('../utils/app-error');
 const { pool } = require('../configs/sql.config');
+const { ensureShipmentAccess } = require('./shipment.service');
 
 // ============================================================================
 // TELEMETRY SERVICE
@@ -25,7 +26,7 @@ const { pool } = require('../configs/sql.config');
  * @param {string} [queryParams.sort]      - 'asc' | 'desc' (default 'desc')
  * @returns {Promise<Object>} Response object
  */
-async function getTelemetryLogs(shipmentId, queryParams = {}) {
+async function getTelemetryLogs(shipmentId, queryParams = {}, access = {}) {
 	// ========================================================================
 	// STEP 1: Validate shipmentId
 	// ========================================================================
@@ -35,13 +36,32 @@ async function getTelemetryLogs(shipmentId, queryParams = {}) {
 
 	// Kiểm tra shipment tồn tại trong MySQL
 	const [rows] = await pool.execute(
-		'SELECT ShipmentID, CargoProfileID FROM Shipments WHERE ShipmentID = ?',
+		`SELECT
+			s.ShipmentID,
+			s.CargoProfileID,
+			s.ShipperPartyID,
+			s.ConsigneePartyID,
+			ao.PartyID AS CurrentOwnerPartyID
+		 FROM Shipments s
+		 LEFT JOIN Ownership ao
+		   ON ao.ShipmentID = s.ShipmentID
+		  AND ao.EndAtUTC IS NULL
+		 WHERE s.ShipmentID = ?
+		 LIMIT 1`,
 		[shipmentId]
 	);
 
 	if (rows.length === 0) {
 		throw AppError.notFound(`Shipment '${shipmentId}' not found`);
 	}
+  ensureShipmentAccess(
+    {
+      ShipperPartyID: rows[0].ShipperPartyID,
+      ConsigneePartyID: rows[0].ConsigneePartyID,
+      CurrentOwnerPartyID: rows[0].CurrentOwnerPartyID,
+    },
+    access
+  );
 
 	// ========================================================================
 	// STEP 2: Parse & validate query params

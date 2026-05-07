@@ -283,7 +283,7 @@ export default function ShipmentsPage() {
             />
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={createMut.isPending}>
-            Gửi (POST /api/shipments)
+            Gửi
           </Button>
         </Form>
       </Modal>
