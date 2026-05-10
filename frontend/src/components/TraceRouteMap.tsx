@@ -177,20 +177,121 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
         const src = map.getSource('trace-route') as maplibregl.GeoJSONSource | undefined
         if (line.length > 1) {
           const geo = {
-            type: 'Feature' as const,
-            geometry: { type: 'LineString' as const, coordinates: line },
-            properties: {},
+            type: 'FeatureCollection' as const,
+            features: [
+              {
+                type: 'Feature' as const,
+                geometry: { type: 'LineString' as const, coordinates: line },
+                properties: {},
+              },
+              ...(trace?.features ?? [])
+                .filter(f => {
+                  const c = (f.geometry as any).coordinates
+                  return Array.isArray(c) && c.length >= 2 && Number.isFinite(Number(c[0])) && Number.isFinite(Number(c[1]))
+                })
+                .map(f => ({
+                  ...f,
+                  geometry: {
+                    type: 'Point' as const,
+                    coordinates: [Number((f.geometry as any).coordinates[0]), Number((f.geometry as any).coordinates[1])] as [number, number]
+                  }
+                }))
+            ],
           }
           if (src) {
             src.setData(geo)
           } else {
             map.addSource('trace-route', { type: 'geojson', data: geo })
+            
+            // Draw the line path
             map.addLayer({
               id: 'trace-line',
               type: 'line',
               source: 'trace-route',
+              filter: ['==', '$type', 'LineString'],
               layout: { 'line-cap': 'round', 'line-join': 'round' },
-              paint: { 'line-color': '#0284c7', 'line-width': 4, 'line-opacity': 0.9 },
+              paint: { 'line-color': '#0284c7', 'line-width': 4, 'line-opacity': 0.8 },
+            })
+            
+            // Draw directional arrows along the line
+            map.addLayer({
+              id: 'trace-line-arrows',
+              type: 'symbol',
+              source: 'trace-route',
+              filter: ['==', '$type', 'LineString'],
+              layout: {
+                'symbol-placement': 'line',
+                'symbol-spacing': 80,
+                'text-field': '▶',
+                'text-size': 14,
+                'text-keep-upright': false
+              },
+              paint: {
+                'text-color': '#0369a1',
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 1
+              }
+            })
+
+            // Draw individual telemetry points
+            map.addLayer({
+              id: 'trace-points',
+              type: 'circle',
+              source: 'trace-route',
+              filter: ['==', '$type', 'Point'],
+              paint: {
+                'circle-radius': 5,
+                'circle-color': [
+                  'case',
+                  ['==', ['get', 'severity'], 'CRITICAL'], '#dc2626',
+                  ['==', ['get', 'severity'], 'HIGH'], '#ea580c',
+                  ['==', ['get', 'violation_level'], 'CRITICAL'], '#dc2626',
+                  ['==', ['get', 'violation_level'], 'HIGH'], '#ea580c',
+                  '#ffffff'
+                ],
+                'circle-stroke-width': 2,
+                'circle-stroke-color': [
+                  'case',
+                  ['==', ['get', 'severity'], 'CRITICAL'], '#991b1b',
+                  ['==', ['get', 'severity'], 'HIGH'], '#9a3412',
+                  ['==', ['get', 'violation_level'], 'CRITICAL'], '#991b1b',
+                  ['==', ['get', 'violation_level'], 'HIGH'], '#9a3412',
+                  '#0284c7'
+                ],
+              },
+            })
+
+            // Interactive popups for points
+            map.on('click', 'trace-points', (e) => {
+              if (!e.features?.[0]) return
+              const p = e.features[0].properties
+              const coords = (e.features[0].geometry as any).coordinates
+              
+              const timeStr = p.time || p.timestamp || p.recorded_at
+              const time = timeStr ? new Date(timeStr).toLocaleString('vi-VN') : 'Không rõ'
+              const temp = p.temp !== undefined && p.temp !== null ? `${Number(p.temp).toFixed(1)}°C` : 'N/A'
+              const hum = p.humidity !== undefined && p.humidity !== null ? `${Number(p.humidity).toFixed(1)}%` : 'N/A'
+              const sev = p.severity || p.violation_level || 'NORMAL'
+              
+              new maplibregl.Popup({ offset: 10, closeButton: true })
+                .setLngLat(coords)
+                .setHTML(`
+                  <div class="p-1 min-w-[160px] text-slate-800">
+                    <h4 class="font-bold text-sm mb-2 border-b pb-1">Chi tiết đo lường</h4>
+                    <p class="text-xs mb-1"><strong>Thời gian:</strong> ${time}</p>
+                    <p class="text-xs mb-1"><strong>Nhiệt độ:</strong> ${temp}</p>
+                    <p class="text-xs mb-1"><strong>Độ ẩm:</strong> ${hum}</p>
+                    <p class="text-xs"><strong>Trạng thái:</strong> <span class="${sev !== 'NORMAL' ? 'text-red-600 font-semibold' : 'text-green-600 font-medium'}">${sev}</span></p>
+                  </div>
+                `)
+                .addTo(map)
+            })
+
+            map.on('mouseenter', 'trace-points', () => {
+              map.getCanvas().style.cursor = 'pointer'
+            })
+            map.on('mouseleave', 'trace-points', () => {
+              map.getCanvas().style.cursor = ''
             })
           }
         } else if (src) {
