@@ -191,6 +191,7 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
                 })
                 .map(f => ({
                   ...f,
+                  type: 'Feature' as const,
                   geometry: {
                     type: 'Point' as const,
                     coordinates: [Number((f.geometry as any).coordinates[0]), Number((f.geometry as any).coordinates[1])] as [number, number]
