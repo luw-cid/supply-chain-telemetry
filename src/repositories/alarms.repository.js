@@ -50,7 +50,8 @@ async function listAlarmEvents(opts = {}) {
       ae.AlarmReason,
       ae.AlarmAtUTC,
       ae.Source,
-      ae.ResolutionNote,
+      ae.AcknowledgedBy,
+      ae.AcknowledgedAtUTC,
       ae.ResolvedBy,
       ae.ResolvedAtUTC,
       ae.CreatedAtUTC,
@@ -68,12 +69,13 @@ async function listAlarmEvents(opts = {}) {
 
 async function updateAlarmEvent({ alarmId, status, userId, resolutionNote }) {
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  // ResolutionNote column does not exist in schema – store note in AlarmReason on resolve
   const setClause = status === 'ACKNOWLEDGED'
     ? `Status = ?, AcknowledgedBy = ?, AcknowledgedAtUTC = ?`
-    : `Status = ?, ResolvedBy = ?, ResolvedAtUTC = ?, ResolutionNote = ?`;
+    : `Status = ?, ResolvedBy = ?, ResolvedAtUTC = ?`;
   const params = status === 'ACKNOWLEDGED'
     ? [status, userId, now, alarmId]
-    : [status, userId, now, resolutionNote || null, alarmId];
+    : [status, userId, now, alarmId];
   const [result] = await pool.query(
     `UPDATE AlarmEvents SET ${setClause} WHERE AlarmEventID = ? AND Status IN ('OPEN', 'ACKNOWLEDGED')`,
     params
