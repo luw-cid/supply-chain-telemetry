@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import type { TraceRouteResponse } from '../api/telemetry'
+import type { PortRow } from '../api/reference'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 const fallbackStyle: maplibregl.StyleSpecification = {
   version: 8,
-  sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1220' } }],
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '&copy; OpenStreetMap contributors',
+    },
+  },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 }
 
 function mapTilerStyleUrl(apiKey: string, mapId: string): string {
@@ -15,11 +23,27 @@ function mapTilerStyleUrl(apiKey: string, mapId: string): string {
   return `https://api.maptiler.com/maps/${id}/style.json?key=${key}`
 }
 
+const PORT_MARKER_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+  <rect width="64" height="64" fill="none"/>
+  <rect x="2" y="44" width="60" height="16" rx="2.5" fill="#38bdf8" fill-opacity="0.45"/>
+  <rect x="4" y="40" width="56" height="5" fill="#475569"/>
+  <rect x="10" y="16" width="44" height="26" rx="3" fill="#0284c7" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="12" y="18" width="40" height="6" rx="1" fill="#0369a1"/>
+  <rect x="17" y="28" width="7" height="10" rx="1" fill="#e0f2fe"/>
+  <rect x="28.5" y="28" width="7" height="10" rx="1" fill="#e0f2fe"/>
+  <rect x="40" y="28" width="7" height="10" rx="1" fill="#e0f2fe"/>
+  <line x1="52" y1="10" x2="52" y2="17" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/>
+  <line x1="52" y1="17" x2="42" y2="24" stroke="#ea580c" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="42" cy="24" r="2.5" fill="#f97316"/>
+</svg>`
+
 function extractLineCoords(data: TraceRouteResponse | null): [number, number][] {
   if (!data?.features?.length) return []
   const pts = data.features
     .filter((f) => f.geometry?.type === 'Point' && Array.isArray(f.geometry.coordinates))
-    .map((f) => f.geometry.coordinates as [number, number])
+    .map((f) => [Number(f.geometry.coordinates[0]), Number(f.geometry.coordinates[1])] as [number, number])
+    .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat))
   return pts
 }
 
@@ -34,15 +58,45 @@ function lastSeverity(data: TraceRouteResponse | null): 'alarm' | 'normal' {
 
 interface TraceRouteMapProps {
   trace: TraceRouteResponse | null
+  shipment?: Record<string, unknown>
+  ports?: PortRow[]
 }
 
-export default function TraceRouteMap({ trace }: TraceRouteMapProps) {
+export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const markerRef = useRef<maplibregl.Marker | null>(null)
+  const markersRef = useRef<maplibregl.Marker[]>([])
+  const boundsRef = useRef<maplibregl.LngLatBounds | null>(null)
+  const wasInvisibleRef = useRef<boolean>(true)
 
   const coords = useMemo(() => extractLineCoords(trace), [trace])
   const coordsKey = useMemo(() => JSON.stringify(coords), [coords])
+
+  const portPoints = useMemo(() => {
+    const relevantPortCodes = new Set([
+      shipment?.OriginPortCode,
+      shipment?.DestinationPortCode,
+      shipment?.CurrentPortCode,
+    ].filter(Boolean))
+
+    return ports
+      .filter((p) => relevantPortCodes.has(p.PortCode) && p.Latitude != null && p.Longitude != null && !Number.isNaN(Number(p.Latitude)))
+      .map((p) => {
+        const roles = []
+        if (p.PortCode === shipment?.OriginPortCode) roles.push('Cảng đi')
+        if (p.PortCode === shipment?.DestinationPortCode) roles.push('Cảng đến')
+        if (p.PortCode === shipment?.CurrentPortCode) roles.push('Hiện tại')
+        return {
+          id: p.PortCode,
+          label: p.Name,
+          lng: Number(p.Longitude),
+          lat: Number(p.Latitude),
+          country: p.Country,
+          status: p.Status,
+          roles,
+        }
+      })
+  }, [ports, shipment])
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
@@ -51,19 +105,35 @@ export default function TraceRouteMap({ trace }: TraceRouteMapProps) {
     const mapId = import.meta.env.VITE_MAPTILER_MAP_ID?.trim() || 'streets-v2'
     const useMapTiler = Boolean(apiKey)
 
-    const start = coords[0] ?? [105, 15]
+    const start = coords[0] ?? (portPoints.length > 0 ? [portPoints[0].lng, portPoints[0].lat] : [105, 15])
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: useMapTiler ? mapTilerStyleUrl(apiKey, mapId) : fallbackStyle,
-      center: start,
+      center: start as [number, number],
       zoom: coords.length ? 4 : 2,
       attributionControl: useMapTiler ? undefined : false,
     })
     mapRef.current = map
 
+    wasInvisibleRef.current = mapContainerRef.current.clientWidth === 0
+
+    const ro = new ResizeObserver((entries) => {
+      map.resize()
+      
+      const isVisible = mapContainerRef.current && mapContainerRef.current.clientWidth > 0 && mapContainerRef.current.clientHeight > 0
+      if (wasInvisibleRef.current && isVisible && boundsRef.current) {
+        map.fitBounds(boundsRef.current, { padding: 56, duration: 0, maxZoom: 12 })
+        wasInvisibleRef.current = false
+      } else if (!isVisible) {
+        wasInvisibleRef.current = true
+      }
+    })
+    ro.observe(mapContainerRef.current)
+
     return () => {
-      markerRef.current?.remove()
-      markerRef.current = null
+      ro.disconnect()
+      markersRef.current.forEach(m => m.remove())
+      markersRef.current = []
       map.remove()
       mapRef.current = null
     }
@@ -75,51 +145,125 @@ export default function TraceRouteMap({ trace }: TraceRouteMapProps) {
 
     const apply = () => {
       const line = coords
-      if (line.length === 0) return
 
-      const src = map.getSource('trace-route') as maplibregl.GeoJSONSource | undefined
-      const geo = {
-        type: 'Feature' as const,
-        geometry: { type: 'LineString' as const, coordinates: line },
-        properties: {},
-      }
-      if (src) {
-        src.setData(geo)
-      } else {
-        map.addSource('trace-route', { type: 'geojson', data: geo })
-        map.addLayer({
-          id: 'trace-line',
-          type: 'line',
-          source: 'trace-route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#0284c7', 'line-width': 4, 'line-opacity': 0.9 },
-        })
-      }
+      markersRef.current.forEach(m => m.remove())
+      markersRef.current = []
 
-      const last = line[line.length - 1]
-      const alarm = lastSeverity(trace) === 'alarm'
-      if (markerRef.current) {
-        markerRef.current.remove()
-        markerRef.current = null
-      }
-      const el = document.createElement('div')
-      el.className = alarm ? 'map-marker is-alarm' : 'map-marker is-normal'
-      markerRef.current = new maplibregl.Marker({ element: el }).setLngLat(last).addTo(map)
+      portPoints.forEach((p) => {
+        const el = document.createElement('div')
+        el.className = 'map-marker-port cursor-pointer'
+        el.innerHTML = PORT_MARKER_SVG
+        
+        const popup = new maplibregl.Popup({ offset: 25, closeButton: true, maxWidth: '250px' })
+          .setHTML(`
+            <div class="p-1 min-w-[150px] text-slate-800">
+              <h4 class="font-bold text-sm mb-1">${p.label}</h4>
+              <p class="text-xs mb-1"><strong>Mã cảng:</strong> ${p.id}</p>
+              <p class="text-xs mb-1"><strong>Vai trò:</strong> ${p.roles.join(', ')}</p>
+              <p class="text-xs mb-1"><strong>Quốc gia:</strong> ${p.country}</p>
+              <p class="text-xs"><strong>Trạng thái:</strong> ${p.status}</p>
+            </div>
+          `)
 
-      const bounds = line.reduce(
-        (acc, c) => acc.extend(c),
-        new maplibregl.LngLatBounds(line[0], line[0]),
-      )
-      map.fitBounds(bounds, { padding: 56, duration: 700 })
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([p.lng, p.lat])
+          .setPopup(popup)
+          .addTo(map)
+          
+        markersRef.current.push(marker)
+      })
+
+      if (line.length > 0) {
+        const src = map.getSource('trace-route') as maplibregl.GeoJSONSource | undefined
+        if (line.length > 1) {
+          const geo = {
+            type: 'Feature' as const,
+            geometry: { type: 'LineString' as const, coordinates: line },
+            properties: {},
+          }
+          if (src) {
+            src.setData(geo)
+          } else {
+            map.addSource('trace-route', { type: 'geojson', data: geo })
+            map.addLayer({
+              id: 'trace-line',
+              type: 'line',
+              source: 'trace-route',
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: { 'line-color': '#0284c7', 'line-width': 4, 'line-opacity': 0.9 },
+            })
+          }
+        } else if (src) {
+          src.setData({ type: 'FeatureCollection' as const, features: [] })
+        }
+
+        const last = line[line.length - 1]
+        const alarm = lastSeverity(trace) === 'alarm'
+        
+        const el = document.createElement('div')
+        el.className = (alarm ? 'map-marker map-marker-alarm-pulse is-alarm' : 'map-marker is-normal') + ' cursor-pointer'
+        
+        const statusColor = alarm ? 'text-red-600' : 'text-green-600'
+        const alarmReasonStr = shipment?.AlarmReason ? `<p class="text-xs mb-1 text-red-500"><strong>Lý do:</strong> ${shipment.AlarmReason}</p>` : ''
+        
+        const popup = new maplibregl.Popup({ offset: 15, closeButton: true, maxWidth: '250px' })
+          .setHTML(`
+            <div class="p-1 min-w-[150px] text-slate-800">
+              <h4 class="font-bold text-sm mb-1 border-b pb-1">Vị trí hiện tại</h4>
+              <p class="text-xs mb-1"><strong>Trạng thái:</strong> <span class="${statusColor} font-semibold">${alarm ? 'ALARM' : 'NORMAL'}</span></p>
+              ${alarmReasonStr}
+              <p class="text-xs mb-1"><strong>Lô hàng:</strong> ${shipment?.ShipmentID ?? ''}</p>
+            </div>
+          `)
+
+        const shipmentMarker = new maplibregl.Marker({ element: el })
+          .setLngLat(last)
+          .setPopup(popup)
+          .addTo(map)
+          
+        markersRef.current.push(shipmentMarker)
+
+        const bounds = line.reduce(
+          (acc, c) => acc.extend(c),
+          new maplibregl.LngLatBounds(line[0], line[0]),
+        )
+        portPoints.forEach(p => bounds.extend([p.lng, p.lat]))
+        boundsRef.current = bounds
+        
+        if (mapContainerRef.current && mapContainerRef.current.clientWidth > 0 && mapContainerRef.current.clientHeight > 0) {
+          map.fitBounds(bounds, { padding: 56, duration: 700, maxZoom: 12 })
+        }
+      } else if (portPoints.length > 0) {
+        // Center on ports if no route available
+        const bounds = portPoints.reduce(
+          (acc, c) => acc.extend([c.lng, c.lat]),
+          new maplibregl.LngLatBounds([portPoints[0].lng, portPoints[0].lat], [portPoints[0].lng, portPoints[0].lat]),
+        )
+        boundsRef.current = bounds
+        
+        if (mapContainerRef.current && mapContainerRef.current.clientWidth > 0 && mapContainerRef.current.clientHeight > 0) {
+          map.fitBounds(bounds, { padding: 56, duration: 700, maxZoom: 8 })
+        }
+      }
     }
 
-    if (map.isStyleLoaded()) apply()
-    else map.once('load', apply)
-  }, [coordsKey, trace])
+    if (map.isStyleLoaded()) {
+      apply()
+    } else {
+      map.once('load', apply)
+    }
+  }, [coordsKey, trace, portPoints])
 
   return (
     <div className="relative h-full min-h-[480px] w-full overflow-hidden rounded-md border border-slate-800">
-      <div ref={mapContainerRef} className="h-full w-full" />
+      <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+      {coords.length === 0 && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="bg-slate-900/80 backdrop-blur-sm p-3 rounded-lg border border-slate-700 shadow-lg pointer-events-auto">
+            <p className="text-white text-sm">Chưa có dữ liệu hành trình để vẽ bản đồ (Telemetry trống)</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

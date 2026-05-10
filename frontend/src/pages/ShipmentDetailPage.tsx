@@ -64,6 +64,12 @@ export default function ShipmentDetailPage() {
     retry: false,
   })
 
+  const portsMapQ = useQuery({
+    queryKey: ['reference', 'ports', 'map'],
+    queryFn: () => import('../api/reference').then(m => m.listPorts({ map: true })),
+    retry: false,
+  })
+
   const statusMut = useMutation({
     mutationFn: ({ status, alarmResolved }: { status: string; alarmResolved: boolean }) =>
       updateShipmentStatus(shipmentId, status, alarmResolved),
@@ -209,9 +215,9 @@ export default function ShipmentDetailPage() {
             <Card className="dashboard-card">
               {traceQ.isLoading && <Typography.Text className={traceLoadingCls}>Đang tải trace…</Typography.Text>}
               {traceQ.isError && (
-                <Alert type="warning" showIcon className="mb-3" message="Chưa có dữ liệu trace" description={(traceQ.error as Error)?.message} />
+                <Alert type="warning" showIcon className="mb-3" message="Chưa có dữ liệu hành trình để vẽ tuyến đường định vị (vẫn hiển thị bản đồ các cảng)" description={(traceQ.error as Error)?.message} />
               )}
-              {traceQ.data && <TraceRouteMap trace={traceQ.data} />}
+              <TraceRouteMap trace={traceQ.data || null} shipment={shipment} ports={portsMapQ.data || []} />
             </Card>
           ),
         },
