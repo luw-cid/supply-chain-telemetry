@@ -61,6 +61,8 @@ export default function GlobalFleetMap({ shipments, ports = [] }: GlobalFleetMap
           label: p.Name,
           lng: Number(p.Longitude),
           lat: Number(p.Latitude),
+          country: p.Country,
+          status: p.Status,
         })),
     [ports],
   )
@@ -74,6 +76,12 @@ export default function GlobalFleetMap({ shipments, ports = [] }: GlobalFleetMap
           lng: Number(s.MarkerLng),
           lat: Number(s.MarkerLat),
           alarm: s.Status === 'ALARM',
+          status: s.Status,
+          alarmReason: s.AlarmReason,
+          shipper: s.ShipperName,
+          consignee: s.ConsigneeName,
+          origin: s.OriginPortCode,
+          dest: s.DestinationPortCode,
         })),
     [shipments],
   )
@@ -119,18 +127,53 @@ export default function GlobalFleetMap({ shipments, ports = [] }: GlobalFleetMap
 
       portPoints.forEach((p) => {
         const el = document.createElement('div')
-        el.className = 'map-marker-port'
-        el.title = `${p.label} (${p.id})`
+        el.className = 'map-marker-port cursor-pointer'
         el.innerHTML = PORT_MARKER_SVG
-        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(map)
+        
+        const popup = new maplibregl.Popup({ offset: 25, closeButton: true, maxWidth: '250px' })
+          .setHTML(`
+            <div class="p-1 min-w-[150px] text-slate-800">
+              <h4 class="font-bold text-sm mb-1">${p.label}</h4>
+              <p class="text-xs mb-1"><strong>Mã cảng:</strong> ${p.id}</p>
+              <p class="text-xs mb-1"><strong>Quốc gia:</strong> ${p.country}</p>
+              <p class="text-xs"><strong>Trạng thái:</strong> ${p.status}</p>
+            </div>
+          `)
+
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([p.lng, p.lat])
+          .setPopup(popup)
+          .addTo(map)
+          
         markersRef.current.push(marker)
       })
 
       shipmentPoints.forEach((p) => {
         const el = document.createElement('div')
-        el.className = p.alarm ? 'map-marker map-marker-alarm-pulse is-alarm' : 'map-marker is-normal'
-        el.title = p.id
-        const marker = new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map)
+        el.className = (p.alarm ? 'map-marker map-marker-alarm-pulse is-alarm' : 'map-marker is-normal') + ' cursor-pointer'
+        
+        const statusColor = p.alarm ? 'text-red-600' : 'text-green-600'
+        const alarmInfo = p.alarm ? `<p class="text-xs mb-1 text-red-500"><strong>Lý do:</strong> ${p.alarmReason || 'Không rõ'}</p>` : ''
+        
+        const popup = new maplibregl.Popup({ offset: 15, closeButton: true, maxWidth: '300px' })
+          .setHTML(`
+            <div class="p-1 min-w-[200px] text-slate-800">
+              <h4 class="font-bold text-sm mb-1 border-b pb-1">
+                <a href="/shipments/${p.id}" class="text-blue-600 hover:underline">Lô hàng: ${p.id}</a>
+              </h4>
+              <p class="text-xs mb-1"><strong>Trạng thái:</strong> <span class="${statusColor} font-semibold">${p.status}</span></p>
+              ${alarmInfo}
+              <p class="text-xs mb-1"><strong>Tuyến:</strong> ${p.origin} ➔ ${p.dest}</p>
+              <p class="text-xs mb-1"><strong>Shipper:</strong> ${p.shipper}</p>
+              <p class="text-xs"><strong>Consignee:</strong> ${p.consignee}</p>
+            </div>
+          `)
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([p.lng, p.lat])
+          .setPopup(popup)
+          .addTo(map)
+          
         markersRef.current.push(marker)
       })
 
