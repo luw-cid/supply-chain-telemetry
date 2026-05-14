@@ -51,6 +51,7 @@ async function insertShipment({
   try {
     await connection.beginTransaction();
 
+    // 1. Tạo shipment
     await connection.query(
       `INSERT INTO Shipments (
         ShipmentID,
@@ -75,6 +76,20 @@ async function insertShipment({
         originPortCode,
         originPortCode,
       ]
+    );
+
+    // 2. Tạo ownership ban đầu cho shipper (chủ sở hữu đầu tiên)
+    await connection.query(
+      `INSERT INTO Ownership (
+        OwnershipID,
+        ShipmentID,
+        PartyID,
+        StartAtUTC,
+        EndAtUTC,
+        HandoverPortCode,
+        HandoverCondition
+      ) VALUES (UUID(), ?, ?, CURRENT_TIMESTAMP(6), NULL, ?, 'GOOD')`,
+      [shipmentId, shipperPartyId, originPortCode]
     );
 
     await connection.commit();

@@ -207,6 +207,38 @@ async function updateShipmentStatus(shipmentId, body, access = {}) {
       );
     }
 
+    // Khi chuyển sang COMPLETED, tự động tạo ownership cho consignee
+    if (status === 'COMPLETED') {
+      const consigneePartyId = shipment.ConsigneePartyID;
+      const destinationPortCode = shipment.DestinationPortCode;
+
+      if (consigneePartyId && destinationPortCode) {
+        // Kết thúc ownership hiện tại (nếu có)
+        await connection.query(
+          `UPDATE Ownership 
+           SET EndAtUTC = CURRENT_TIMESTAMP(6),
+               HandoverPortCode = ?,
+               HandoverCondition = 'GOOD'
+           WHERE ShipmentID = ? AND EndAtUTC IS NULL`,
+          [destinationPortCode, shipmentId]
+        );
+
+        // Tạo ownership mới cho consignee
+        await connection.query(
+          `INSERT INTO Ownership (
+            OwnershipID,
+            ShipmentID,
+            PartyID,
+            StartAtUTC,
+            EndAtUTC,
+            HandoverPortCode,
+            HandoverCondition
+          ) VALUES (UUID(), ?, ?, CURRENT_TIMESTAMP(6), NULL, ?, 'GOOD')`,
+          [shipmentId, consigneePartyId, destinationPortCode]
+        );
+      }
+    }
+
     await connection.commit();
     return { shipmentId, status, alarmResolved: !!alarmResolved };
   } catch (err) {

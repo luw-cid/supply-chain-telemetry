@@ -334,14 +334,14 @@ CREATE TABLE IF NOT EXISTS AlarmEvents (
     -- Nguồn tạo alarm
     Source        ENUM('SQL_TRIGGER','BATCH_SCAN','INTEGRATION') NOT NULL,
     
-    -- User ID người xác nhận alarm
-    AcknowledgedBy VARCHAR(32)  NULL,
+    -- User ID người xác nhận alarm (email hoặc UUID từ JWT)
+    AcknowledgedBy VARCHAR(255)  NULL,
     
     -- Thời điểm xác nhận
     AcknowledgedAtUTC TIMESTAMP(6) NULL,
     
-    -- User ID người giải quyết alarm
-    ResolvedBy    VARCHAR(32)   NULL,
+    -- User ID người giải quyết alarm (email hoặc UUID từ JWT)
+    ResolvedBy    VARCHAR(255)   NULL,
     
     -- Thời điểm giải quyết
     ResolvedAtUTC TIMESTAMP(6)  NULL,
