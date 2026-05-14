@@ -49,11 +49,14 @@ async function listAlarmEvents(opts = {}) {
       ae.Status,
       ae.AlarmReason,
       ae.AlarmAtUTC,
+      ae.Latitude,
+      ae.Longitude,
       ae.Source,
       ae.AcknowledgedBy,
       ae.AcknowledgedAtUTC,
       ae.ResolvedBy,
       ae.ResolvedAtUTC,
+      ae.ResolutionNote,
       ae.CreatedAtUTC,
       s.Status AS ShipmentStatus
     FROM AlarmEvents ae
@@ -69,13 +72,12 @@ async function listAlarmEvents(opts = {}) {
 
 async function updateAlarmEvent({ alarmId, status, userId, resolutionNote }) {
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  // ResolutionNote column does not exist in schema – store note in AlarmReason on resolve
   const setClause = status === 'ACKNOWLEDGED'
     ? `Status = ?, AcknowledgedBy = ?, AcknowledgedAtUTC = ?`
-    : `Status = ?, ResolvedBy = ?, ResolvedAtUTC = ?`;
+    : `Status = ?, ResolvedBy = ?, ResolvedAtUTC = ?, ResolutionNote = ?`;
   const params = status === 'ACKNOWLEDGED'
     ? [status, userId, now, alarmId]
-    : [status, userId, now, alarmId];
+    : [status, userId, now, resolutionNote || null, alarmId];
   const [result] = await pool.query(
     `UPDATE AlarmEvents SET ${setClause} WHERE AlarmEventID = ? AND Status IN ('OPEN', 'ACKNOWLEDGED')`,
     params
@@ -106,11 +108,11 @@ async function updateAlarmEvent({ alarmId, status, userId, resolutionNote }) {
   return { alarmId, status, userId, updatedAt: now };
 }
 
-async function createAlarmEvent({ shipmentId, alarmType, severity, alarmReason, source }) {
+async function createAlarmEvent({ shipmentId, alarmType, severity, alarmReason, source, latitude, longitude }) {
   const [result] = await pool.query(
-    `INSERT INTO AlarmEvents (AlarmEventID, ShipmentID, AlarmType, Severity, Status, AlarmReason, AlarmAtUTC, Source)
-     VALUES (UUID(), ?, ?, ?, 'OPEN', ?, CURRENT_TIMESTAMP(6), ?)`,
-    [shipmentId, alarmType, severity, alarmReason, source]
+    `INSERT INTO AlarmEvents (AlarmEventID, ShipmentID, AlarmType, Severity, Status, AlarmReason, AlarmAtUTC, Latitude, Longitude, Source)
+     VALUES (UUID(), ?, ?, ?, 'OPEN', ?, CURRENT_TIMESTAMP(6), ?, ?, ?)`,
+    [shipmentId, alarmType, severity, alarmReason, latitude || null, longitude || null, source]
   );
   await pool.query(
     `UPDATE Shipments SET Status = 'ALARM', AlarmAtUTC = CURRENT_TIMESTAMP(6), AlarmReason = ?, UpdatedAtUTC = CURRENT_TIMESTAMP(6) WHERE ShipmentID = ?`,

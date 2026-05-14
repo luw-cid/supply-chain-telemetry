@@ -49,14 +49,33 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
   const [seqEnd, setSeqEnd] = useState(15)
   const [seqStep, setSeqStep] = useState(2)
 
+  // Location settings
+  const [locationMode, setLocationMode] = useState<'fixed' | 'moving'>('fixed')
+  const [startLng, setStartLng] = useState(106.7)
+  const [startLat, setStartLat] = useState(10.8)
+  const [lngStep, setLngStep] = useState(0.1)
+  const [latStep, setLatStep] = useState(0.1)
+
   const shipmentsQ = useQuery({
     queryKey: ['shipments', 'simulator'],
     queryFn: () => listShipments({ page: 1, limit: 100 }),
   })
   const shipments = shipmentsQ.data?.data ?? []
 
+  // Auto-fill location when switching to moving mode or changing shipment
+  const currentShipment = shipments.find((s) => s.ShipmentID === shipmentId)
+  const handleLocationModeChange = (newMode: 'fixed' | 'moving') => {
+    setLocationMode(newMode)
+    if (newMode === 'moving' && currentShipment) {
+      setStartLng(Number(currentShipment.MarkerLng ?? 106.7))
+      setStartLat(Number(currentShipment.MarkerLat ?? 10.8))
+    }
+  }
+
   const sendOne = async (index: number) => {
     const shipment = shipments.find((s) => s.ShipmentID === shipmentId)
+    
+    // Calculate temperature
     let temp: number
     if (mode === 'manual') temp = manualTemp
     else if (mode === 'random') {
@@ -67,9 +86,21 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
       const step = seqStep > 0 ? seqStep : -seqStep
       temp = Math.round((seqStart + index * (seqStart < seqEnd ? step : -step)) * 10) / 10
     }
-    const loc = {
-      lng: Number(shipment?.MarkerLng ?? 106.7),
-      lat: Number(shipment?.MarkerLat ?? 10.8),
+    
+    // Calculate location
+    let loc: { lng: number; lat: number }
+    if (locationMode === 'fixed') {
+      // Fixed location from shipment marker or default
+      loc = {
+        lng: Number(shipment?.MarkerLng ?? 106.7),
+        lat: Number(shipment?.MarkerLat ?? 10.8),
+      }
+    } else {
+      // Moving location: start + (step * index)
+      loc = {
+        lng: Math.round((startLng + lngStep * index) * 1000000) / 1000000,
+        lat: Math.round((startLat + latStep * index) * 1000000) / 1000000,
+      }
     }
 
     try {
@@ -179,14 +210,24 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
           </div>
         </div>
 
-        <div>
-          <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Temperature mode</Typography.Text>
-          <Select className={selectCls} size="small" value={mode} onChange={(v) => setMode(v as typeof mode)} disabled={running}
-            options={[
-              { label: 'Manual (fixed value)', value: 'manual' },
-              { label: 'Random (range)', value: 'random' },
-              { label: 'Sequential (ramp)', value: 'sequential' },
-            ]} />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Temperature mode</Typography.Text>
+            <Select className={selectCls} size="small" value={mode} onChange={(v) => setMode(v as typeof mode)} disabled={running}
+              options={[
+                { label: 'Manual (fixed)', value: 'manual' },
+                { label: 'Random (range)', value: 'random' },
+                { label: 'Sequential (ramp)', value: 'sequential' },
+              ]} />
+          </div>
+          <div>
+            <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Location mode</Typography.Text>
+            <Select className={selectCls} size="small" value={locationMode} onChange={handleLocationModeChange} disabled={running}
+              options={[
+                { label: 'Fixed (shipment marker)', value: 'fixed' },
+                { label: 'Moving (simulate route)', value: 'moving' },
+              ]} />
+          </div>
         </div>
 
         {mode === 'manual' && (
@@ -228,6 +269,34 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
           </div>
         )}
 
+        {locationMode === 'moving' && (
+          <>
+            <Divider style={{ margin: '8px 0' }}>
+              <Typography.Text className={mutedCls} style={{ fontSize: 11 }}>Location Settings</Typography.Text>
+            </Divider>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Start Longitude</Typography.Text>
+                <InputNumber className={inputCls} size="small" value={startLng} onChange={(v) => setStartLng(v ?? 0)} disabled={running} step={0.1} />
+              </div>
+              <div>
+                <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Start Latitude</Typography.Text>
+                <InputNumber className={inputCls} size="small" value={startLat} onChange={(v) => setStartLat(v ?? 0)} disabled={running} step={0.1} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Lng Step (per send)</Typography.Text>
+                <InputNumber className={inputCls} size="small" value={lngStep} onChange={(v) => setLngStep(v ?? 0)} disabled={running} step={0.01} />
+              </div>
+              <div>
+                <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Lat Step (per send)</Typography.Text>
+                <InputNumber className={inputCls} size="small" value={latStep} onChange={(v) => setLatStep(v ?? 0)} disabled={running} step={0.01} />
+              </div>
+            </div>
+          </>
+        )}
+
         <div className="grid grid-cols-3 gap-2">
           <div>
             <Typography.Text className={mutedCls} style={{ fontSize: 12 }}>Humidity (%)</Typography.Text>
@@ -259,14 +328,14 @@ export default function TelemetrySimulator({ open, onClose, onRunningChange }: {
         {logs.length > 0 && (
           <>
             <Divider style={{ margin: '4px 0' }} />
-            <div className="max-h-48 overflow-y-auto" style={{ fontSize: 12 }}>
+            <div className="max-h-48 overflow-y-auto" style={{ fontSize: 11 }}>
               {logs.map((l, i) => (
-                <div key={i} className="flex items-center gap-2 py-0.5">
-                  <Tag style={{ fontSize: 11, margin: 0 }}>{l.time}</Tag>
+                <div key={i} className="flex items-center gap-1 py-0.5">
+                  <Tag style={{ fontSize: 10, margin: 0, padding: '0 4px' }}>{l.time}</Tag>
                   <span className={textCls}>{l.temp}°C</span>
-                  {l.violation && <Tag color="red">VIOLATION</Tag>}
-                  {!l.violation && l.ok && <Tag color="green">OK</Tag>}
-                  {!l.ok && <Tag color="orange">{l.error}</Tag>}
+                  {l.violation && <Tag color="red" style={{ fontSize: 10, margin: 0, padding: '0 4px' }}>VIOLATION</Tag>}
+                  {!l.violation && l.ok && <Tag color="green" style={{ fontSize: 10, margin: 0, padding: '0 4px' }}>OK</Tag>}
+                  {!l.ok && <Tag color="orange" style={{ fontSize: 10, margin: 0, padding: '0 4px' }}>{l.error}</Tag>}
                 </div>
               ))}
             </div>

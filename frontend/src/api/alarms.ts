@@ -8,6 +8,8 @@ export interface AlarmRow {
   Status: string
   AlarmReason: string
   AlarmAtUTC: string
+  Latitude?: number | null
+  Longitude?: number | null
   Source: string
   ResolutionNote?: string | null
   ResolvedBy?: string | null

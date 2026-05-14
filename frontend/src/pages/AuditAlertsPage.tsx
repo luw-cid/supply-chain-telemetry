@@ -135,6 +135,21 @@ export default function AuditAlertsPage() {
                   columns={[
                     { title: 'Thời gian', dataIndex: 'AlarmAtUTC', key: 't', width: 160, render: (v: string) => new Date(v).toLocaleString() },
                     { title: 'Shipment', dataIndex: 'ShipmentID', key: 's', width: 140, render: (id: string) => <Link to={`/shipments/${id}`}>{id}</Link> },
+                    { 
+                      title: 'Tọa độ', 
+                      key: 'location', 
+                      width: 180, 
+                      render: (_, row: any) => {
+                        if (row.Latitude != null && row.Longitude != null) {
+                          return (
+                            <Typography.Text className={monoCls}>
+                              {Number(row.Latitude).toFixed(4)}, {Number(row.Longitude).toFixed(4)}
+                            </Typography.Text>
+                          )
+                        }
+                        return <Typography.Text type="secondary">—</Typography.Text>
+                      }
+                    },
                     { title: 'Loại', dataIndex: 'AlarmType', key: 'ty', width: 120 },
                     { title: 'Trạng thái', dataIndex: 'Status', key: 'st', width: 110, render: (v: string) => <Tag color={v === 'RESOLVED' || v === 'FALSE_ALARM' ? 'green' : v === 'ACKNOWLEDGED' ? 'blue' : 'volcano'}>{v}</Tag> },
                     { title: 'Lý do', dataIndex: 'AlarmReason', key: 'r', ellipsis: true },

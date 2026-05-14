@@ -59,10 +59,14 @@ async function markViolationAndEnqueueAlarm({ shipmentId, alarmReason, outboxPay
       [alarmReason, shipmentId]
     );
 
+    // Extract location from outboxPayload
+    const latitude = outboxPayload?.location?.lat || null;
+    const longitude = outboxPayload?.location?.lng || null;
+
     await connection.query(
-      `INSERT INTO AlarmEvents (AlarmEventID, ShipmentID, AlarmType, Severity, Status, AlarmReason, AlarmAtUTC, Source)
-       VALUES (UUID(), ?, 'TEMP_VIOLATION', 'HIGH', 'OPEN', ?, CURRENT_TIMESTAMP(6), 'SQL_TRIGGER')`,
-      [shipmentId, alarmReason]
+      `INSERT INTO AlarmEvents (AlarmEventID, ShipmentID, AlarmType, Severity, Status, AlarmReason, AlarmAtUTC, Latitude, Longitude, Source)
+       VALUES (UUID(), ?, 'TEMP_VIOLATION', 'HIGH', 'OPEN', ?, CURRENT_TIMESTAMP(6), ?, ?, 'SQL_TRIGGER')`,
+      [shipmentId, alarmReason, latitude, longitude]
     );
 
     await connection.query(
