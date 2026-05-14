@@ -441,26 +441,24 @@ export default function RouteMap({ routeCoordinates, currentPoint, shipment, eve
       const validMarkers = ownershipMarkers
         .filter((m) => Number.isFinite(m.lng) && Number.isFinite(m.lat))
 
-      // Group markers by coordinate key to detect overlaps
+      // Group same-location ownership markers for initial fan-out
       const coordGroups: Record<string, number[]> = {}
       validMarkers.forEach((m, idx) => {
-        const key = `${m.lng.toFixed(4)},${m.lat.toFixed(4)}`
+        const key = `${m.lng.toFixed(3)},${m.lat.toFixed(3)}`
         if (!coordGroups[key]) coordGroups[key] = []
         coordGroups[key].push(idx)
       })
 
-      // Pre-compute pixel offset for each marker index
-      // Fan-out pattern: offset duplicate markers in a small arc so all are visible
-      const OFFSET_RADIUS = 22 // pixels between overlapping markers
-      const markerOffsets: [number, number][] = new Array(validMarkers.length).fill([0, 0])
+      const OWN_RADIUS = 22
+      const ownOffsets: [number, number][] = new Array(validMarkers.length).fill([0, 0])
       Object.values(coordGroups).forEach((indices) => {
         if (indices.length <= 1) return
         const count = indices.length
         indices.forEach((idx, i) => {
-          const angle = (2 * Math.PI * i) / count - Math.PI / 2 // start from top
-          markerOffsets[idx] = [
-            Math.round(Math.cos(angle) * OFFSET_RADIUS),
-            Math.round(Math.sin(angle) * OFFSET_RADIUS),
+          const angle = (2 * Math.PI * i) / count - Math.PI / 2
+          ownOffsets[idx] = [
+            Math.round(Math.cos(angle) * OWN_RADIUS),
+            Math.round(Math.sin(angle) * OWN_RADIUS),
           ]
         })
       })
@@ -470,27 +468,28 @@ export default function RouteMap({ routeCoordinates, currentPoint, shipment, eve
         const bgColor = isActive ? '#d97706' : '#64748b'
         const borderColor = isActive ? '#92400e' : '#334155'
 
-        const coordKey = `${m.lng.toFixed(4)},${m.lat.toFixed(4)}`
+        const coordKey = `${m.lng.toFixed(3)},${m.lat.toFixed(3)}`
         const hasOverlap = (coordGroups[coordKey]?.length ?? 0) > 1
-        const [ox, oy] = markerOffsets[idx]
+        const [ox, oy] = ownOffsets[idx]
 
         const el = document.createElement('div')
         el.style.cssText = [
-          `width:32px`, `height:32px`,
+          `width:30px`, `height:30px`,
           `border-radius:50%`,
           `background:${bgColor}`,
           `border:3px solid ${borderColor}`,
           `display:flex`, `align-items:center`, `justify-content:center`,
-          `color:#ffffff`, `font-size:13px`, `font-weight:700`,
+          `color:#ffffff`, `font-size:12px`, `font-weight:700`,
           `cursor:pointer`,
           `box-shadow:0 2px 6px rgba(0,0,0,0.35)`,
           `position:relative`,
-          // Ring indicator when overlapping at same location
+          // Apply initial same-type fan-out via transform (event pass may update this)
+          `transform:translate(${ox}px,${oy}px)`,
           hasOverlap ? `outline:2px dashed ${borderColor};outline-offset:3px` : '',
           isActive ? `animation:ownershipPulse 2s ease-in-out infinite` : '',
         ].join(';')
         el.textContent = String(m.stepNumber)
-        el.title = `Bước #${m.stepNumber}: ${m.ownerName}${hasOverlap ? ' (cùng cảng)' : ''}`
+        el.title = `Bước #${m.stepNumber}: ${m.ownerName}`
 
         const samePortNote = hasOverlap
           ? `<p style="margin:4px 0 0;font-size:10px;color:#d97706;font-style:italic">⚠️ Nhiều bàn giao tại cùng cảng này</p>`
@@ -499,8 +498,8 @@ export default function RouteMap({ routeCoordinates, currentPoint, shipment, eve
         const popup = new maplibregl.Popup({ offset: 18, closeButton: true, maxWidth: '250px' })
           .setHTML(buildOwnershipPopupHTML(m) + samePortNote)
 
-        // Use pixel offset so overlapping markers spread out visually
-        const marker = new maplibregl.Marker({ element: el, anchor: 'center', offset: [ox, oy] })
+        // Use offset:[0,0]; actual position set via el.style.transform above
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center', offset: [0, 0] })
           .setLngLat([m.lng, m.lat])
           .setPopup(popup)
           .addTo(map)
@@ -523,31 +522,80 @@ export default function RouteMap({ routeCoordinates, currentPoint, shipment, eve
       eventMarkersRef.current.forEach((m) => m.remove())
       eventMarkersRef.current = []
 
-      events
-        .filter((e) => Number.isFinite(e.lng) && Number.isFinite(e.lat))
-        .forEach((e) => {
-          const outer = document.createElement('div')
-          outer.title = e.title
-          outer.style.cursor = 'pointer'
+      const validEvents = events.filter((e) => Number.isFinite(e.lng) && Number.isFinite(e.lat))
 
-          const inner = document.createElement('div')
-          inner.className = 'map-marker map-marker-event'
-          inner.style.width = '22px'
-          inner.style.height = '22px'
-          inner.style.borderWidth = '2px'
-          inner.style.zIndex = '3'
-          inner.style.transform = 'rotate(45deg)'
-          outer.appendChild(inner)
+      // ── Cross-type overlap resolution ────────────────────────────────
+      // Collect ALL occupied positions: ownership markers + events (+ origin/current)
+      // then assign radial pixel offsets so every marker is visible.
+      type SlotEntry = { type: 'ownership' | 'event' | 'pin'; idx: number }
+      const posMap: Record<string, SlotEntry[]> = {}
 
-          const popup = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '220px' })
-            .setHTML(buildEventPopupHTML(e))
+      const addPos = (lng: number, lat: number, entry: SlotEntry) => {
+        const key = `${lng.toFixed(3)},${lat.toFixed(3)}`
+        if (!posMap[key]) posMap[key] = []
+        posMap[key].push(entry)
+      }
 
-          const marker = new maplibregl.Marker({ element: outer, anchor: 'center' })
-            .setLngLat([e.lng, e.lat])
-            .setPopup(popup)
-            .addTo(map)
-          eventMarkersRef.current.push(marker)
+      // Register ownership marker positions
+      ownershipMarkersRef.current.forEach((m, idx) => {
+        const ll = m.getLngLat()
+        addPos(ll.lng, ll.lat, { type: 'ownership', idx })
+      })
+      // Register event positions
+      validEvents.forEach((e, idx) => addPos(e.lng, e.lat, { type: 'event', idx }))
+
+      // Compute per-slot pixel offsets (radial fan-out)
+      const EVENT_OFFSET_RADIUS = 28
+      const eventOffsets: [number, number][] = validEvents.map(() => [0, 0])
+
+      Object.values(posMap).forEach((slots) => {
+        if (slots.length <= 1) return
+        const total = slots.length
+        slots.forEach((slot, i) => {
+          const angle = (2 * Math.PI * i) / total - Math.PI / 2
+          const ox = Math.round(Math.cos(angle) * EVENT_OFFSET_RADIUS)
+          const oy = Math.round(Math.sin(angle) * EVENT_OFFSET_RADIUS)
+          if (slot.type === 'event') {
+            eventOffsets[slot.idx] = [ox, oy]
+          }
+          // Re-apply updated offset to already-placed ownership markers
+          if (slot.type === 'ownership') {
+            const owned = ownershipMarkersRef.current[slot.idx]
+            if (owned) {
+              // maplibre-gl Marker doesn't expose setOffset, so we move the DOM element
+              const el = owned.getElement()
+              el.style.transform = `translate(${ox}px,${oy}px)`
+            }
+          }
         })
+      })
+
+      // Place event markers with computed offsets
+      validEvents.forEach((e, idx) => {
+        const [ox, oy] = eventOffsets[idx]
+
+        const outer = document.createElement('div')
+        outer.title = e.title
+        outer.style.cursor = 'pointer'
+
+        const inner = document.createElement('div')
+        inner.className = 'map-marker map-marker-event'
+        inner.style.width = '20px'
+        inner.style.height = '20px'
+        inner.style.borderWidth = '2px'
+        inner.style.zIndex = '3'
+        inner.style.transform = 'rotate(45deg)'
+        outer.appendChild(inner)
+
+        const popup = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '220px' })
+          .setHTML(buildEventPopupHTML(e))
+
+        const marker = new maplibregl.Marker({ element: outer, anchor: 'center', offset: [ox, oy] })
+          .setLngLat([e.lng, e.lat])
+          .setPopup(popup)
+          .addTo(map)
+        eventMarkersRef.current.push(marker)
+      })
 
       // Re-lift origin marker to top of DOM stack after event markers are added,
       // ensuring origin icon always renders above overlapping event diamonds

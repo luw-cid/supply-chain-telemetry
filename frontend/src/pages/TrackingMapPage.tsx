@@ -278,6 +278,7 @@ export default function TrackingMapPage() {
                 shipment={selectedShipment}
                 events={eventMarkers}
                 ownershipMarkers={ownershipMarkers}
+                originCoord={originCoord}
               />
             )}
           </Card>
