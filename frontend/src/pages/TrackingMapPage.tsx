@@ -183,51 +183,56 @@ export default function TrackingMapPage() {
 
   const eventMarkers = useMemo(() => {
     const evs = eventsQ.data ?? []
-    return evs
-      .map((e) => {
-        const coords = e.location?.coordinates
-        if (!coords || coords.length !== 2) return null
-        const lng = Number(coords[0])
-        const lat = Number(coords[1])
-        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
-        const label = e.label || e.port_code || 'Event'
-        return {
-          lng,
-          lat,
-          title: `${e.type} · ${label}`,
-          type: e.type as string,
-          portCode: e.port_code as string | undefined,
-          timestamp: e.t as string | undefined,
-        }
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null)
+    return evs.flatMap((e) => {
+      const coords = e.location?.coordinates
+      if (!coords || coords.length !== 2) return []
+      const lng = Number(coords[0])
+      const lat = Number(coords[1])
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) return []
+      const label = String(e.label || e.port_code || 'Event')
+      return [{
+        lng,
+        lat,
+        title: `${String(e.type)} · ${label}`,
+        type: String(e.type),
+        portCode: e.port_code != null ? String(e.port_code) : undefined,
+        timestamp: e.t != null ? String(e.t) : undefined,
+      }]
+    })
   }, [eventsQ.data])
 
+  // ── Ownership markers — 1 marker per ownership step có tọa độ ─────────
   const ownershipMarkers = useMemo(() => {
     const chain = ownershipQ.data?.chain ?? []
-    return chain
-      .map((step) => {
-        const lat = Number(step.handoverPort?.latitude)
-        const lng = Number(step.handoverPort?.longitude)
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
-        return {
-          lng,
-          lat,
-          stepNumber: step.stepNumber,
-          ownerName: step.currentOwner?.name ?? 'N/A',
-          ownerType: step.currentOwner?.type ?? '',
-          previousOwnerName: step.previousOwner?.name ?? null,
-          portCode: step.handoverPort?.code ?? '',
-          portName: step.handoverPort?.name ?? '',
-          portCountry: step.handoverPort?.country ?? '',
-          handoverCondition: step.handoverCondition,
-          startAtUTC: step.startAtUTC,
-          endAtUTC: step.endAtUTC,
-          ownershipStatus: step.ownershipStatus,
-        }
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null)
+    return chain.flatMap((step) => {
+      const lat = Number(step.handoverPort?.latitude)
+      const lng = Number(step.handoverPort?.longitude)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return []
+      return [{
+        lng,
+        lat,
+        stepNumber: Number(step.stepNumber),
+        ownerName: String(step.currentOwner?.name ?? 'N/A'),
+        ownerType: String(step.currentOwner?.type ?? ''),
+        previousOwnerName: step.previousOwner?.name != null ? String(step.previousOwner.name) : null,
+        portCode: String(step.handoverPort?.code ?? ''),
+        portName: String(step.handoverPort?.name ?? ''),
+        portCountry: String(step.handoverPort?.country ?? ''),
+        handoverCondition: String(step.handoverCondition),
+        startAtUTC: String(step.startAtUTC),
+        endAtUTC: step.endAtUTC != null ? String(step.endAtUTC) : null,
+        ownershipStatus: String(step.ownershipStatus),
+      }]
+    })
   }, [ownershipQ.data])
+
+  // Tọa độ thực sự của cảng xuất phát – độc lập với telemetry GPS
+  const originCoord = useMemo<[number, number] | null>(() => {
+    const lat = Number(selectedShipment?.OriginPortLat)
+    const lng = Number(selectedShipment?.OriginPortLng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return [lng, lat]
+    return null
+  }, [selectedShipment])
 
   return (
     <Space orientation="vertical" size={16} className="w-full">
