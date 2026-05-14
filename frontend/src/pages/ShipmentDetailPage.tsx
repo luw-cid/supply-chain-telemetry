@@ -218,7 +218,12 @@ export default function ShipmentDetailPage() {
                 <Alert type="warning" showIcon className="mb-3" message="Chưa có dữ liệu hành trình để vẽ tuyến đường định vị (vẫn hiển thị bản đồ các cảng)" description={(traceQ.error as Error)?.message} />
               )}
               <div style={{ height: '550px' }}>
-                <TraceRouteMap trace={traceQ.data || null} shipment={shipment} ports={portsMapQ.data || []} />
+                <TraceRouteMap 
+                  trace={traceQ.data || null} 
+                  shipment={shipment} 
+                  ports={portsMapQ.data || []} 
+                  custodyChain={(custodyQ.data?.chain ?? []) as Record<string, unknown>[]}
+                />
               </div>
             </Card>
           ),

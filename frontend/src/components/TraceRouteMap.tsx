@@ -60,9 +60,10 @@ interface TraceRouteMapProps {
   trace: TraceRouteResponse | null
   shipment?: Record<string, unknown>
   ports?: PortRow[]
+  custodyChain?: Array<Record<string, unknown>>
 }
 
-export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRouteMapProps) {
+export default function TraceRouteMap({ trace, shipment, ports = [], custodyChain = [] }: TraceRouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<maplibregl.Marker[]>([])
@@ -72,6 +73,42 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
 
   const coords = useMemo(() => extractLineCoords(trace), [trace])
   const coordsKey = useMemo(() => JSON.stringify(coords), [coords])
+
+  // Extract custody chain route - ports in order of ownership transfer
+  const custodyRoute = useMemo(() => {
+    if (!custodyChain || custodyChain.length === 0) return []
+    
+    console.log('🔍 Custody chain data:', custodyChain)
+    
+    const route: Array<{ lng: number; lat: number; portCode: string; portName: string; stepNumber: number; owner: string }> = []
+    
+    custodyChain.forEach((step) => {
+      const handoverPort = step.handoverPort as Record<string, unknown> | undefined
+      console.log('🔍 Processing step:', step.stepNumber, 'handoverPort:', handoverPort)
+      
+      if (handoverPort && handoverPort.latitude && handoverPort.longitude) {
+        const lat = Number(handoverPort.latitude)
+        const lng = Number(handoverPort.longitude)
+        console.log('🔍 Coordinates:', { lat, lng, isFinite: Number.isFinite(lat) && Number.isFinite(lng) })
+        
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          route.push({
+            lng,
+            lat,
+            portCode: String(handoverPort.code || ''),
+            portName: String(handoverPort.name || ''),
+            stepNumber: Number(step.stepNumber || 0),
+            owner: String((step.currentOwner as Record<string, unknown>)?.name || '')
+          })
+        }
+      }
+    })
+    
+    console.log('🗺️ Final custody route:', route)
+    return route
+  }, [custodyChain])
+
+  const custodyRouteKey = useMemo(() => JSON.stringify(custodyRoute), [custodyRoute])
 
   const portPoints = useMemo(() => {
     const relevantPortCodes = new Set([
@@ -355,6 +392,154 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
           initialFitDoneRef.current = true
         }
       }
+
+      // Draw custody chain route
+      if (custodyRoute.length > 1) {
+        const custodySrc = map.getSource('custody-route') as maplibregl.GeoJSONSource | undefined
+        const custodyLineCoords = custodyRoute.map(r => [r.lng, r.lat] as [number, number])
+        
+        // Check if all points are the same (all transfers at same port)
+        const allSameLocation = custodyRoute.every(r => 
+          r.lng === custodyRoute[0].lng && r.lat === custodyRoute[0].lat
+        )
+        
+        console.log('🗺️ Custody route visualization:', {
+          pointCount: custodyRoute.length,
+          allSameLocation,
+          points: custodyRoute
+        })
+        
+        const custodyGeo = {
+          type: 'FeatureCollection' as const,
+          features: [
+            // Only add line if points are different
+            ...(!allSameLocation ? [{
+              type: 'Feature' as const,
+              geometry: { type: 'LineString' as const, coordinates: custodyLineCoords },
+              properties: {},
+            }] : []),
+            ...custodyRoute.map((r, idx) => ({
+              type: 'Feature' as const,
+              geometry: { type: 'Point' as const, coordinates: [r.lng, r.lat] as [number, number] },
+              properties: {
+                stepNumber: r.stepNumber,
+                portCode: r.portCode,
+                portName: r.portName,
+                owner: r.owner,
+                isFirst: idx === 0,
+                isLast: idx === custodyRoute.length - 1,
+                // Add offset for overlapping points
+                offsetIndex: allSameLocation ? idx : 0
+              }
+            }))
+          ]
+        }
+
+        if (custodySrc) {
+          custodySrc.setData(custodyGeo)
+        } else {
+          map.addSource('custody-route', { type: 'geojson', data: custodyGeo })
+          
+          // Draw custody chain line only if points are different
+          if (!allSameLocation) {
+            map.addLayer({
+              id: 'custody-line',
+              type: 'line',
+              source: 'custody-route',
+              filter: ['==', '$type', 'LineString'],
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: { 
+                'line-color': '#f59e0b', 
+                'line-width': 3, 
+                'line-opacity': 0.9,
+                'line-dasharray': [2, 2]
+              },
+            })
+          }
+
+          // Draw custody transfer points
+          map.addLayer({
+            id: 'custody-points',
+            type: 'circle',
+            source: 'custody-route',
+            filter: ['==', '$type', 'Point'],
+            paint: {
+              'circle-radius': 8,
+              'circle-color': '#f59e0b',
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#ffffff',
+            },
+          })
+
+          // Add step numbers as labels
+          map.addLayer({
+            id: 'custody-labels',
+            type: 'symbol',
+            source: 'custody-route',
+            filter: ['==', '$type', 'Point'],
+            layout: {
+              'text-field': ['get', 'stepNumber'],
+              'text-size': 12,
+              'text-offset': [0, 0],
+            },
+            paint: {
+              'text-color': '#ffffff',
+            }
+          })
+
+          // Interactive popups for custody points
+          map.on('click', 'custody-points', (e) => {
+            if (!e.features?.[0]) return
+            const p = e.features[0].properties
+            const coords = (e.features[0].geometry as any).coordinates
+            
+            const sameLocationNote = allSameLocation 
+              ? '<p class="text-xs mt-2 text-amber-600 italic">⚠️ Tất cả bàn giao tại cùng cảng</p>' 
+              : ''
+            
+            new maplibregl.Popup({ offset: 10, closeButton: true })
+              .setLngLat(coords)
+              .setHTML(`
+                <div class="p-2 min-w-[180px] text-slate-800">
+                  <h4 class="font-bold text-sm mb-2 border-b pb-1 text-amber-600">Bàn giao #${p.stepNumber}</h4>
+                  <p class="text-xs mb-1"><strong>Cảng:</strong> ${p.portName} (${p.portCode})</p>
+                  <p class="text-xs mb-1"><strong>Chủ sở hữu:</strong> ${p.owner}</p>
+                  ${sameLocationNote}
+                </div>
+              `)
+              .addTo(map)
+          })
+
+          map.on('mouseenter', 'custody-points', () => {
+            map.getCanvas().style.cursor = 'pointer'
+          })
+          map.on('mouseleave', 'custody-points', () => {
+            map.getCanvas().style.cursor = ''
+          })
+        }
+
+        // Update bounds to include custody route
+        if (boundsRef.current) {
+          custodyRoute.forEach(r => boundsRef.current!.extend([r.lng, r.lat]))
+        } else {
+          const bounds = custodyRoute.reduce(
+            (acc, r) => acc.extend([r.lng, r.lat]),
+            new maplibregl.LngLatBounds([custodyRoute[0].lng, custodyRoute[0].lat], [custodyRoute[0].lng, custodyRoute[0].lat])
+          )
+          boundsRef.current = bounds
+          
+          if (mapContainerRef.current && mapContainerRef.current.clientWidth > 0 && mapContainerRef.current.clientHeight > 0) {
+            map.fitBounds(bounds, { padding: 56, duration: 700, maxZoom: 8 })
+            initialFitDoneRef.current = true
+          }
+        }
+      } else if (custodyRoute.length > 0) {
+        // Remove custody route if only one point
+        const custodySrc = map.getSource('custody-route') as maplibregl.GeoJSONSource | undefined
+        if (custodySrc) {
+          custodySrc.setData({ type: 'FeatureCollection' as const, features: [] })
+        }
+      }
     }
 
     if (map.isStyleLoaded()) {
@@ -362,7 +547,7 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
     } else {
       map.once('load', apply)
     }
-  }, [coordsKey, trace, portPoints])
+  }, [coordsKey, trace, portPoints, custodyRouteKey, custodyRoute])
 
   // Additional effect to handle visibility changes and ensure map renders correctly
   useEffect(() => {
@@ -411,10 +596,17 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
   return (
     <div className="relative h-full w-full overflow-hidden rounded-md border border-slate-800">
       <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
-      {coords.length === 0 && (
+      {coords.length === 0 && custodyRoute.length === 0 && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="bg-slate-900/80 backdrop-blur-sm p-3 rounded-lg border border-slate-700 shadow-lg pointer-events-auto">
-            <p className="text-white text-sm">Chưa có dữ liệu hành trình để vẽ bản đồ (Telemetry trống)</p>
+            <p className="text-white text-sm">Chưa có dữ liệu hành trình để vẽ bản đồ</p>
+          </div>
+        </div>
+      )}
+      {custodyRoute.length > 1 && custodyRoute.every(r => r.lng === custodyRoute[0].lng && r.lat === custodyRoute[0].lat) && (
+        <div className="absolute top-4 left-4 z-10 pointer-events-none">
+          <div className="bg-amber-500/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-amber-600 shadow-lg pointer-events-auto">
+            <p className="text-white text-xs font-medium">⚠️ Tất cả bàn giao xảy ra tại cùng một cảng</p>
           </div>
         </div>
       )}
