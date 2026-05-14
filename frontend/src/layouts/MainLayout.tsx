@@ -22,6 +22,7 @@ import {
   Layout,
   List,
   Menu,
+  type MenuProps,
   notification,
   Popover,
   Tooltip,

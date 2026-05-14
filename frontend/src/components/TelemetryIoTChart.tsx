@@ -33,7 +33,7 @@ export default function TelemetryIoTChart({ logs, tempMin, tempMax, compact = fa
     [logs],
   )
 
-  const { domain, ticks } = useMemo(() => {
+  const { domain } = useMemo(() => {
     const temps = data.map((d) => d.temperature).filter((t) => typeof t === 'number')
     const lo = typeof tempMin === 'number' ? tempMin : Math.min(...temps, 0)
     const hi = typeof tempMax === 'number' ? tempMax : Math.max(...temps, 100)

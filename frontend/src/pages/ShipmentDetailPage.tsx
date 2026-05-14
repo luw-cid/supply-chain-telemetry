@@ -212,12 +212,14 @@ export default function ShipmentDetailPage() {
         {
           key: 'trace', label: 'Hành trình (Trace)',
           children: (
-            <Card className="dashboard-card">
+            <Card className="dashboard-card" style={{ minHeight: '600px' }}>
               {traceQ.isLoading && <Typography.Text className={traceLoadingCls}>Đang tải trace…</Typography.Text>}
               {traceQ.isError && (
                 <Alert type="warning" showIcon className="mb-3" message="Chưa có dữ liệu hành trình để vẽ tuyến đường định vị (vẫn hiển thị bản đồ các cảng)" description={(traceQ.error as Error)?.message} />
               )}
-              <TraceRouteMap trace={traceQ.data || null} shipment={shipment} ports={portsMapQ.data || []} />
+              <div style={{ height: '550px' }}>
+                <TraceRouteMap trace={traceQ.data || null} shipment={shipment} ports={portsMapQ.data || []} />
+              </div>
             </Card>
           ),
         },

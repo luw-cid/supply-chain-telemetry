@@ -60,7 +60,7 @@ export default function RouteOptimizationMap({ path, ports }: RouteOptimizationM
     const mapId = import.meta.env.VITE_MAPTILER_MAP_ID?.trim() || 'streets-v2'
     const useMapTiler = Boolean(apiKey)
 
-    const center = coordinates[0] ? [coordinates[0].lng, coordinates[0].lat] as [number, number] : [105, 15]
+    const center: [number, number] = coordinates[0] ? [coordinates[0].lng, coordinates[0].lat] : [105, 15]
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: useMapTiler ? mapTilerStyleUrl(apiKey, mapId) : fallbackStyle,

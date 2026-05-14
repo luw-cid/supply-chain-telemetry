@@ -68,6 +68,7 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
   const markersRef = useRef<maplibregl.Marker[]>([])
   const boundsRef = useRef<maplibregl.LngLatBounds | null>(null)
   const wasInvisibleRef = useRef<boolean>(true)
+  const initialFitDoneRef = useRef<boolean>(false)
 
   const coords = useMemo(() => extractLineCoords(trace), [trace])
   const coordsKey = useMemo(() => JSON.stringify(coords), [coords])
@@ -117,12 +118,17 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
 
     wasInvisibleRef.current = mapContainerRef.current.clientWidth === 0
 
-    const ro = new ResizeObserver((entries) => {
+    const ro = new ResizeObserver(() => {
       map.resize()
       
       const isVisible = mapContainerRef.current && mapContainerRef.current.clientWidth > 0 && mapContainerRef.current.clientHeight > 0
-      if (wasInvisibleRef.current && isVisible && boundsRef.current) {
-        map.fitBounds(boundsRef.current, { padding: 56, duration: 0, maxZoom: 12 })
+      if (wasInvisibleRef.current && isVisible && boundsRef.current && !initialFitDoneRef.current) {
+        setTimeout(() => {
+          if (boundsRef.current) {
+            map.fitBounds(boundsRef.current, { padding: 56, duration: 0, maxZoom: 12 })
+            initialFitDoneRef.current = true
+          }
+        }, 100)
         wasInvisibleRef.current = false
       } else if (!isVisible) {
         wasInvisibleRef.current = true
@@ -334,6 +340,7 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
         
         if (mapContainerRef.current && mapContainerRef.current.clientWidth > 0 && mapContainerRef.current.clientHeight > 0) {
           map.fitBounds(bounds, { padding: 56, duration: 700, maxZoom: 12 })
+          initialFitDoneRef.current = true
         }
       } else if (portPoints.length > 0) {
         // Center on ports if no route available
@@ -345,6 +352,7 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
         
         if (mapContainerRef.current && mapContainerRef.current.clientWidth > 0 && mapContainerRef.current.clientHeight > 0) {
           map.fitBounds(bounds, { padding: 56, duration: 700, maxZoom: 8 })
+          initialFitDoneRef.current = true
         }
       }
     }
@@ -356,8 +364,52 @@ export default function TraceRouteMap({ trace, shipment, ports = [] }: TraceRout
     }
   }, [coordsKey, trace, portPoints])
 
+  // Additional effect to handle visibility changes and ensure map renders correctly
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapContainerRef.current) return
+
+    const checkAndResize = () => {
+      const container = mapContainerRef.current
+      if (!container) return
+      
+      const isVisible = container.clientWidth > 0 && container.clientHeight > 0
+      
+      console.log('🗺️ TraceRouteMap visibility check:', {
+        isVisible,
+        width: container.clientWidth,
+        height: container.clientHeight,
+        hasBounds: !!boundsRef.current,
+        initialFitDone: initialFitDoneRef.current
+      })
+      
+      if (isVisible) {
+        map.resize()
+        
+        // If we have bounds and haven't done initial fit yet, do it now
+        if (boundsRef.current && !initialFitDoneRef.current) {
+          console.log('🗺️ Fitting bounds after visibility change')
+          setTimeout(() => {
+            if (boundsRef.current) {
+              map.fitBounds(boundsRef.current, { padding: 56, duration: 300, maxZoom: 12 })
+              initialFitDoneRef.current = true
+            }
+          }, 150)
+        }
+      }
+    }
+
+    // Check immediately
+    checkAndResize()
+
+    // Also check after a short delay to handle tab switching
+    const timer = setTimeout(checkAndResize, 200)
+
+    return () => clearTimeout(timer)
+  }, [coordsKey]) // Re-run when coords change
+
   return (
-    <div className="relative h-full min-h-[480px] w-full overflow-hidden rounded-md border border-slate-800">
+    <div className="relative h-full w-full overflow-hidden rounded-md border border-slate-800">
       <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
       {coords.length === 0 && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
