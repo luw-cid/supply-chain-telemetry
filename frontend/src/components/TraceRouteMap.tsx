@@ -38,6 +38,28 @@ const PORT_MARKER_SVG = `
   <circle cx="42" cy="24" r="2.5" fill="#f97316"/>
 </svg>`
 
+// Destination port – distinct green anchor/flag icon
+const DESTINATION_PORT_MARKER_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+  <rect width="64" height="64" fill="none"/>
+  <!-- Water -->
+  <rect x="2" y="46" width="60" height="14" rx="2.5" fill="#6ee7b7" fill-opacity="0.45"/>
+  <rect x="4" y="42" width="56" height="5" fill="#064e3b"/>
+  <!-- Hull -->
+  <rect x="10" y="18" width="44" height="26" rx="3" fill="#059669" stroke="#022c22" stroke-width="1.5"/>
+  <rect x="12" y="20" width="40" height="6" rx="1" fill="#047857"/>
+  <!-- Windows -->
+  <rect x="17" y="30" width="7" height="10" rx="1" fill="#d1fae5"/>
+  <rect x="28.5" y="30" width="7" height="10" rx="1" fill="#d1fae5"/>
+  <rect x="40" y="30" width="7" height="10" rx="1" fill="#d1fae5"/>
+  <!-- Flagpole -->
+  <line x1="20" y1="4" x2="20" y2="20" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/>
+  <!-- Flag -->
+  <polygon points="20,4 44,10 20,16" fill="#facc15" stroke="#ca8a04" stroke-width="1"/>
+  <!-- Star on flag -->
+  <circle cx="30" cy="10" r="2.5" fill="#ca8a04"/>
+</svg>`
+
 function extractLineCoords(data: TraceRouteResponse | null): [number, number][] {
   if (!data?.features?.length) return []
   const pts = data.features
@@ -193,9 +215,10 @@ export default function TraceRouteMap({ trace, shipment, ports = [], custodyChai
       markersRef.current = []
 
       portPoints.forEach((p) => {
+        const isDestination = p.roles.includes('Cảng đến')
         const el = document.createElement('div')
         el.className = 'map-marker-port cursor-pointer'
-        el.innerHTML = PORT_MARKER_SVG
+        el.innerHTML = isDestination ? DESTINATION_PORT_MARKER_SVG : PORT_MARKER_SVG
         
         const popup = new maplibregl.Popup({ offset: 25, closeButton: true, maxWidth: '250px' })
           .setHTML(`

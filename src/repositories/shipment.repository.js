@@ -214,6 +214,8 @@ async function listShipmentsWithDisplay(opts = {}) {
       cn.Name AS ConsigneeName,
       po.Name AS OriginPortName,
       pd.Name AS DestinationPortName,
+      po.Latitude  AS OriginPortLat,
+      po.Longitude AS OriginPortLng,
       COALESCE(pc.Latitude, po.Latitude) AS MarkerLat,
       COALESCE(pc.Longitude, po.Longitude) AS MarkerLng
     FROM Shipments s

@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import { getTelemetryLogs, getTraceRoute } from '../api/telemetry'
 import { listShipments, type ShipmentListItem } from '../api/shipments'
 import { getTrackingEvents } from '../api/tracking'
+import { getOwnershipHistory } from '../api/custody'
 import RouteMap from '../components/RouteMap'
 import StatusBadge from '../components/StatusBadge'
 import TemperatureChart from '../components/TemperatureChart'
@@ -80,6 +81,15 @@ export default function TrackingMapPage() {
     retry: false,
     // BUG #8 FIX: refresh events (có thể có CUSTODY_TRANSFER mới trong quá trình vận chuyển)
     refetchInterval: 10_000,
+  })
+
+  // ── Ownership history — fetch để hiện marker từng bước bàn giao ────────
+  const ownershipQ = useQuery({
+    queryKey: ['ownership-history', selectedShipmentId],
+    queryFn: () => getOwnershipHistory(selectedShipmentId, 'DETAILED'),
+    enabled: Boolean(selectedShipmentId),
+    retry: false,
+    refetchInterval: 15_000,
   })
 
   const historyPoints = useMemo<TelemetryPoint[]>(() => {
@@ -181,10 +191,43 @@ export default function TrackingMapPage() {
         const lat = Number(coords[1])
         if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
         const label = e.label || e.port_code || 'Event'
-        return { lng, lat, title: `${e.type} · ${label}` }
+        return {
+          lng,
+          lat,
+          title: `${e.type} · ${label}`,
+          type: e.type as string,
+          portCode: e.port_code as string | undefined,
+          timestamp: e.t as string | undefined,
+        }
       })
-      .filter((x): x is { lng: number; lat: number; title: string } => Boolean(x))
+      .filter((x): x is NonNullable<typeof x> => x !== null)
   }, [eventsQ.data])
+
+  const ownershipMarkers = useMemo(() => {
+    const chain = ownershipQ.data?.chain ?? []
+    return chain
+      .map((step) => {
+        const lat = Number(step.handoverPort?.latitude)
+        const lng = Number(step.handoverPort?.longitude)
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+        return {
+          lng,
+          lat,
+          stepNumber: step.stepNumber,
+          ownerName: step.currentOwner?.name ?? 'N/A',
+          ownerType: step.currentOwner?.type ?? '',
+          previousOwnerName: step.previousOwner?.name ?? null,
+          portCode: step.handoverPort?.code ?? '',
+          portName: step.handoverPort?.name ?? '',
+          portCountry: step.handoverPort?.country ?? '',
+          handoverCondition: step.handoverCondition,
+          startAtUTC: step.startAtUTC,
+          endAtUTC: step.endAtUTC,
+          ownershipStatus: step.ownershipStatus,
+        }
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+  }, [ownershipQ.data])
 
   return (
     <Space orientation="vertical" size={16} className="w-full">
@@ -224,7 +267,13 @@ export default function TrackingMapPage() {
               />
             )}
             {!shipmentsQ.isLoading && !shipmentsQ.isError && (
-              <RouteMap routeCoordinates={routeCoordinates} currentPoint={currentPoint} events={eventMarkers} />
+              <RouteMap
+                routeCoordinates={routeCoordinates}
+                currentPoint={currentPoint}
+                shipment={selectedShipment}
+                events={eventMarkers}
+                ownershipMarkers={ownershipMarkers}
+              />
             )}
           </Card>
         </Col>

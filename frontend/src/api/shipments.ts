@@ -17,6 +17,8 @@ export interface ShipmentListItem {
   ConsigneeName: string
   OriginPortName: string
   DestinationPortName: string
+  OriginPortLat: number | null
+  OriginPortLng: number | null
   MarkerLat: number | null
   MarkerLng: number | null
 }

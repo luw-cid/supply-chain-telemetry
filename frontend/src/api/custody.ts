@@ -28,9 +28,42 @@ export async function getOwnershipHistory(shipmentId: string, detail: 'DETAILED'
   return data.data
 }
 
+export interface OwnershipStep {
+  stepNumber: number
+  currentOwner: {
+    partyId: string
+    name: string
+    type: string
+    email?: string | null
+    phone?: string | null
+    address?: string | null
+  }
+  previousOwner: {
+    partyId: string
+    name: string
+    type: string
+  } | null
+  handoverPort: {
+    code: string
+    name: string | null
+    country: string | null
+    latitude: number | null
+    longitude: number | null
+    timezone: string | null
+  }
+  handoverCondition: string
+  handoverNotes: string | null
+  witness: { name: string; type: string } | null
+  startAtUTC: string
+  endAtUTC: string | null
+  ownershipDurationHours: number | null
+  ownershipStatus: string
+  chainDepth: number
+}
+
 export interface OwnershipHistoryData {
   shipmentId: string
   detailLevel: string
   totalTransfers: number
-  chain: Record<string, unknown>[]
+  chain: OwnershipStep[]
 }
